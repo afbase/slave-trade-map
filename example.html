@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transatlantic Slave Trade — Flow Map</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@300;400;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a1628;
+    color: #d4cbb8;
+    font-family: 'Source Sans 3', sans-serif;
+    overflow-x: hidden;
+  }
+
+  .header {
+    text-align: center;
+    padding: 32px 24px 8px;
+  }
+
+  .header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: #e8dcc8;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  .header .subtitle {
+    font-size: 13px;
+    font-weight: 300;
+    color: #8a8070;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .header .data-note {
+    font-size: 11px;
+    color: #5a5448;
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  #map-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .land { fill: #1a2a3e; stroke: #2a3a50; stroke-width: 0.4; }
+  .coast { fill: none; stroke: #2a3a50; stroke-width: 0.3; }
+  .graticule { fill: none; stroke: #111e30; stroke-width: 0.3; }
+
+  .flow-path {
+    fill: none;
+    stroke-linecap: round;
+    opacity: 0;
+    animation: fadeFlow 1.2s ease-out forwards;
+  }
+
+  @keyframes fadeFlow {
+    from { opacity: 0; stroke-dashoffset: 800; }
+    to { opacity: 0.65; stroke-dashoffset: 0; }
+  }
+
+  .flow-path:hover {
+    opacity: 0.95 !important;
+    filter: brightness(1.3);
+    cursor: pointer;
+  }
+
+  .flow-arrow {
+    pointer-events: none;
+  }
+
+  .region-dot {
+    stroke: #0a1628;
+    stroke-width: 1.5;
+  }
+
+  .region-label {
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    fill: #c0b8a0;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    pointer-events: none;
+  }
+
+  .region-label.africa {
+    fill: #d4a856;
+  }
+
+  .ocean-label {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    fill: #1a2e48;
+    font-size: 18px;
+    pointer-events: none;
+  }
+
+  .tooltip {
+    position: absolute;
+    background: #1a2a3eee;
+    border: 1px solid #3a4a5a;
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: #d4cbb8;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 100;
+    max-width: 260px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+
+  .tooltip .tt-route {
+    font-family: 'Playfair Display', serif;
+    font-size: 14px;
+    color: #e8dcc8;
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+
+  .tooltip .tt-stat {
+    font-size: 11px;
+    color: #8a8070;
+    line-height: 1.6;
+  }
+
+  .tooltip .tt-stat strong {
+    color: #d4a856;
+    font-weight: 600;
+  }
+
+  .legend {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    background: #0a1628cc;
+    border: 1px solid #2a3a50;
+    border-radius: 6px;
+    padding: 14px 18px;
+    backdrop-filter: blur(6px);
+  }
+
+  .legend-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 12px;
+    color: #c0b8a0;
+    margin-bottom: 10px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+    font-size: 10px;
+    color: #8a8070;
+  }
+
+  .legend-line {
+    border-radius: 2px;
+    height: 4px;
+    background: #a08040;
+  }
+
+  .controls {
+    text-align: center;
+    padding: 12px;
+  }
+
+  .controls button {
+    background: #1a2a3e;
+    color: #c0b8a0;
+    border: 1px solid #3a4a5a;
+    padding: 6px 16px;
+    margin: 0 4px;
+    border-radius: 4px;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .controls button:hover, .controls button.active {
+    background: #2a3a50;
+    color: #d4a856;
+    border-color: #d4a856;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Volume &amp; Direction of the Transatlantic Slave Trade</h1>
+  <div class="subtitle">Flows from African Embarkation to American Disembarkation Regions</div>
+  <div class="data-note">Based on 513 voyage sample from the Trans-Atlantic Slave Trade Database</div>
+</div>
+
+<div class="controls">
+  <button class="active" data-filter="all">All Flows</button>
+  <button data-filter="top10">Top 10 Routes</button>
+  <button data-filter="brazil">→ Brazil</button>
+  <button data-filter="caribbean">→ Caribbean</button>
+  <button data-filter="namerica">→ N. America</button>
+</div>
+
+<div id="map-container">
+  <div class="tooltip" id="tooltip"></div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────
+// DATA: Aggregated from random_sample.csv
+// Source = MAJBYIMP (imputed principal region of slave purchase)
+// Target = MJSELIMP (imputed principal region of slave disembarkation)
+// total_embarked = sum of SLAXIMP (imputed total slaves embarked)
+// ──────────────────────────────────────────────
+const flows = [
+  {s:60800,t:50400,emb:5770,v:14},{s:60400,t:35100,emb:5523,v:18},{s:60700,t:50400,emb:4802,v:11},
+  {s:60700,t:31300,emb:4490,v:7},{s:60500,t:50200,emb:3990,v:12},{s:60500,t:36400,emb:3718,v:12},
+  {s:60400,t:32200,emb:3702,v:12},{s:60600,t:35100,emb:3502,v:11},{s:60500,t:31300,emb:3435,v:5},
+  {s:60700,t:35100,emb:2707,v:7},{s:60800,t:36400,emb:2697,v:8},{s:60700,t:32100,emb:2632,v:7},
+  {s:60800,t:31300,emb:2375,v:4},{s:60300,t:36400,emb:2041,v:7},{s:60400,t:37000,emb:2035,v:8},
+  {s:60300,t:35100,emb:2018,v:7},{s:60500,t:35100,emb:1749,v:5},{s:60600,t:31300,emb:1647,v:4},
+  {s:60900,t:31300,emb:1544,v:5},{s:60200,t:31300,emb:1499,v:6},{s:60100,t:41200,emb:1474,v:5},
+  {s:60100,t:50100,emb:1461,v:5},{s:60700,t:50200,emb:1446,v:6},{s:60700,t:34400,emb:1368,v:5},
+  {s:60500,t:32100,emb:1323,v:3},{s:60700,t:32200,emb:1303,v:4},{s:60400,t:36400,emb:1297,v:6},
+  {s:60600,t:60200,emb:1292,v:8},{s:60600,t:50200,emb:1270,v:8},{s:60900,t:32200,emb:1192,v:4},
+  {s:60300,t:34200,emb:1182,v:5},{s:60400,t:21300,emb:1179,v:4},{s:60600,t:36100,emb:1127,v:4},
+  {s:60700,t:60200,emb:1108,v:2},{s:60500,t:50300,emb:1085,v:4},{s:60700,t:36400,emb:1026,v:4},
+  {s:60300,t:36100,emb:989,v:5},{s:60900,t:50300,emb:987,v:4},{s:60900,t:36400,emb:976,v:3},
+  {s:60600,t:34400,emb:922,v:7},{s:60500,t:36100,emb:888,v:3},{s:60600,t:34200,emb:870,v:4},
+  {s:60100,t:36100,emb:828,v:2},{s:60500,t:32200,emb:821,v:2},{s:60300,t:34400,emb:820,v:3},
+  {s:60300,t:32200,emb:816,v:3},{s:60700,t:80200,emb:813,v:2},{s:60200,t:21300,emb:791,v:4},
+  {s:60100,t:36400,emb:769,v:3},{s:60100,t:21600,emb:750,v:3},{s:60800,t:42000,emb:739,v:6},
+  {s:60500,t:31100,emb:720,v:2},{s:60800,t:34200,emb:716,v:2},{s:60700,t:50300,emb:691,v:3},
+  {s:60600,t:41200,emb:678,v:2},{s:60100,t:37000,emb:665,v:2},{s:60400,t:32100,emb:641,v:2},
+  {s:60600,t:32200,emb:629,v:3},{s:60200,t:36100,emb:589,v:2},{s:60500,t:34200,emb:581,v:3},
+  {s:60600,t:36400,emb:574,v:3},{s:60300,t:80200,emb:572,v:2},{s:60400,t:35300,emb:560,v:2},
+  {s:60500,t:33600,emb:558,v:2},{s:60600,t:80200,emb:552,v:2},{s:60400,t:34300,emb:534,v:2},
+  {s:60600,t:33400,emb:529,v:2},{s:60700,t:34200,emb:525,v:2},{s:60600,t:33800,emb:501,v:2},
+  {s:60500,t:50400,emb:501,v:2},{s:60700,t:35300,emb:492,v:2},{s:60200,t:33400,emb:491,v:2},
+  {s:60900,t:37000,emb:464,v:2},{s:60500,t:34400,emb:461,v:2},{s:60200,t:80200,emb:426,v:2},
+  {s:60200,t:35100,emb:423,v:2},{s:60900,t:21300,emb:419,v:2},{s:60200,t:34300,emb:410,v:2},
+  {s:60300,t:34300,emb:383,v:2},{s:60100,t:34200,emb:355,v:3},{s:60400,t:33500,emb:348,v:2},
+  {s:60100,t:31300,emb:348,v:3},{s:60300,t:33400,emb:303,v:2},{s:60600,t:42000,emb:300,v:2},
+  {s:60500,t:50100,emb:300,v:2},{s:60200,t:34200,emb:283,v:2},{s:60100,t:21300,emb:258,v:2}
+];
+
+// ──────────────────────────────────────────────
+// REGION COORDINATES (approximate centroids)
+// ──────────────────────────────────────────────
+const regionCoords = {
+  // African embarkation regions
+  60100: { name: "Senegambia", lat: 14.5, lng: -16.5 },
+  60200: { name: "Sierra Leone", lat: 8.5, lng: -13 },
+  60300: { name: "Windward Coast", lat: 6, lng: -8 },
+  60400: { name: "Gold Coast", lat: 6, lng: -1 },
+  60500: { name: "Bight of Benin", lat: 6.5, lng: 2.5 },
+  60600: { name: "Bight of Biafra", lat: 4, lng: 8.5 },
+  60700: { name: "West Central Africa", lat: -6.5, lng: 13 },
+  60800: { name: "Southeast Africa", lat: -18, lng: 38 },
+  60900: { name: "Other Africa", lat: 1, lng: 20 },
+  // American disembarkation regions
+  21300: { name: "South Carolina", lat: 32.8, lng: -79.9 },
+  21400: { name: "Virginia", lat: 37.5, lng: -77.4 },
+  21600: { name: "Gulf Coast", lat: 30, lng: -89.5 },
+  31100: { name: "Hispaniola", lat: 19, lng: -70 },
+  31300: { name: "Cuba", lat: 22, lng: -79.5 },
+  32100: { name: "Dutch Caribbean", lat: 12.2, lng: -68.5 },
+  32200: { name: "Dutch Guianas", lat: 5.8, lng: -55 },
+  33400: { name: "Montserrat", lat: 16.7, lng: -62.2 },
+  33500: { name: "Nevis", lat: 17.2, lng: -62.6 },
+  33600: { name: "St. Kitts", lat: 17.3, lng: -62.7 },
+  33800: { name: "St. Vincent", lat: 13.2, lng: -61.2 },
+  34200: { name: "Barbados", lat: 13.2, lng: -59.5 },
+  34300: { name: "Dominica", lat: 15.4, lng: -61.4 },
+  34400: { name: "Grenada", lat: 12, lng: -61.7 },
+  35100: { name: "Jamaica", lat: 18.1, lng: -77.3 },
+  35300: { name: "Antigua", lat: 17.1, lng: -61.8 },
+  35500: { name: "Tobago", lat: 11.2, lng: -60.7 },
+  36100: { name: "Martinique", lat: 14.6, lng: -61 },
+  36400: { name: "Saint-Domingue", lat: 19.8, lng: -72.3 },
+  37000: { name: "Danish W. Indies", lat: 17.7, lng: -64.8 },
+  41200: { name: "Sp. Carib. Mainland", lat: 10.5, lng: -75 },
+  42000: { name: "Río de la Plata", lat: -34.6, lng: -58.4 },
+  50100: { name: "Amazonia", lat: -2, lng: -49 },
+  50200: { name: "Bahia", lat: -13, lng: -38.5 },
+  50300: { name: "Pernambuco", lat: -8, lng: -35 },
+  50400: { name: "SE Brazil", lat: -23, lng: -43 },
+  80200: { name: "Americas, unspec.", lat: 15, lng: -65 }
+};
+
+// ──────────────────────────────────────────────
+// BROAD REGION CLASSIFICATION (for filtering)
+// ──────────────────────────────────────────────
+function getBroadRegion(code) {
+  if (code >= 50000 && code < 60000) return "brazil";
+  if (code >= 30000 && code < 40000) return "caribbean";
+  if (code >= 20000 && code < 30000) return "namerica";
+  if (code >= 40000 && code < 50000) return "spanish";
+  if (code >= 60000) return "africa";
+  return "other";
+}
+
+// ──────────────────────────────────────────────
+// SETUP SVG
+// ──────────────────────────────────────────────
+const width = 1200, height = 620;
+const svg = d3.select("#map-container")
+  .append("svg")
+  .attr("viewBox", `0 0 ${width} ${height}`)
+  .attr("preserveAspectRatio", "xMidYMid meet");
+
+// Gradient background
+const defs = svg.append("defs");
+const bgGrad = defs.append("radialGradient").attr("id", "bg-grad")
+  .attr("cx", "40%").attr("cy", "45%").attr("r", "60%");
+bgGrad.append("stop").attr("offset", "0%").attr("stop-color", "#0f2038");
+bgGrad.append("stop").attr("offset", "100%").attr("stop-color", "#0a1628");
+svg.append("rect").attr("width", width).attr("height", height).attr("fill", "url(#bg-grad)");
+
+// Arrow marker
+defs.append("marker")
+  .attr("id", "arrowhead")
+  .attr("viewBox", "0 0 10 10")
+  .attr("refX", 8).attr("refY", 5)
+  .attr("markerWidth", 4).attr("markerHeight", 4)
+  .attr("orient", "auto")
+  .append("path")
+  .attr("d", "M 0 2 L 8 5 L 0 8 Z")
+  .attr("fill", "#c8a050");
+
+// Projection: Natural Earth centered on Atlantic
+const projection = d3.geoNaturalEarth1()
+  .center([-20, 5])
+  .scale(220)
+  .translate([width / 2 - 20, height / 2 + 20]);
+
+const path = d3.geoPath().projection(projection);
+
+// Graticule
+const graticule = d3.geoGraticule().step([15, 15]);
+svg.append("path")
+  .datum(graticule())
+  .attr("class", "graticule")
+  .attr("d", path);
+
+// Tooltip
+const tooltip = d3.select("#tooltip");
+
+// ──────────────────────────────────────────────
+// LOAD WORLD MAP
+// ──────────────────────────────────────────────
+const worldUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+
+d3.json(worldUrl).then(world => {
+  const countries = topojson.feature(world, world.objects.countries);
+
+  svg.append("g")
+    .selectAll("path")
+    .data(countries.features)
+    .enter().append("path")
+    .attr("class", "land")
+    .attr("d", path);
+
+  // Ocean labels
+  const oceanLabels = [
+    { text: "ATLANTIC OCEAN", x: 420, y: 360, size: 20 },
+    { text: "PACIFIC", x: 55, y: 420, size: 14 },
+  ];
+  svg.selectAll(".ocean-label")
+    .data(oceanLabels)
+    .enter().append("text")
+    .attr("class", "ocean-label")
+    .attr("x", d => d.x).attr("y", d => d.y)
+    .attr("font-size", d => d.size)
+    .attr("text-anchor", "middle")
+    .text(d => d.text);
+
+  // Continent labels
+  svg.append("text")
+    .attr("x", projection([-95, 48])[0]).attr("y", projection([-95, 48])[1])
+    .attr("fill", "#1e3450").attr("font-size", 14)
+    .attr("font-family", "'Source Sans 3'").attr("font-weight", 600)
+    .attr("letter-spacing", 6).text("NORTH AMERICA");
+
+  svg.append("text")
+    .attr("x", projection([-55, -30])[0]).attr("y", projection([-55, -30])[1])
+    .attr("fill", "#1e3450").attr("font-size", 14)
+    .attr("font-family", "'Source Sans 3'").attr("font-weight", 600)
+    .attr("letter-spacing", 6).text("SOUTH AMERICA");
+
+  svg.append("text")
+    .attr("x", projection([20, 18])[0]).attr("y", projection([20, 18])[1])
+    .attr("fill", "#1e3450").attr("font-size", 16)
+    .attr("font-family", "'Source Sans 3'").attr("font-weight", 600)
+    .attr("letter-spacing", 8).text("AFRICA");
+
+  svg.append("text")
+    .attr("x", projection([15, 52])[0]).attr("y", projection([15, 52])[1])
+    .attr("fill", "#1e3450").attr("font-size", 12)
+    .attr("font-family", "'Source Sans 3'").attr("font-weight", 600)
+    .attr("letter-spacing", 4).text("EUROPE");
+
+  // ──────────────────────────────────────────────
+  // DRAW FLOW ARCS
+  // ──────────────────────────────────────────────
+  const maxEmb = d3.max(flows, d => d.emb);
+  const strokeScale = d3.scaleSqrt().domain([200, maxEmb]).range([1, 12]);
+
+  // Color scale by source region
+  const sourceColorScale = d3.scaleOrdinal()
+    .domain([60100, 60200, 60300, 60400, 60500, 60600, 60700, 60800, 60900])
+    .range(["#c8a050", "#b89040", "#a88838", "#d4a856", "#c09848", "#b08838", "#9a7830", "#8a6828", "#7a5820"]);
+
+  const flowGroup = svg.append("g").attr("class", "flows");
+
+  function generateArc(source, target) {
+    const s = projection([source.lng, source.lat]);
+    const t = projection([target.lng, target.lat]);
+    if (!s || !t) return null;
+
+    const dx = t[0] - s[0];
+    const dy = t[1] - s[1];
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Curve intensity based on distance
+    const curveAmount = Math.min(dist * 0.35, 120);
+
+    // Perpendicular offset for the control point
+    const mx = (s[0] + t[0]) / 2;
+    const my = (s[1] + t[1]) / 2;
+
+    // Offset perpendicular to the line, biased upward for Atlantic crossing feel
+    const angle = Math.atan2(dy, dx);
+    const cx = mx - Math.sin(angle) * curveAmount;
+    const cy = my + Math.cos(angle) * curveAmount * 0.3 - curveAmount * 0.5;
+
+    return `M ${s[0]},${s[1]} Q ${cx},${cy} ${t[0]},${t[1]}`;
+  }
+
+  function drawArrowhead(group, arcPath, strokeWidth, color, index) {
+    // Create a temporary path to sample the endpoint and tangent
+    const tempPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    tempPath.setAttribute("d", arcPath);
+    const totalLen = tempPath.getTotalLength();
+    if (totalLen < 1) return;
+
+    // Get endpoint and a point slightly before it for the tangent angle
+    const end = tempPath.getPointAtLength(totalLen);
+    const before = tempPath.getPointAtLength(Math.max(0, totalLen - 8));
+    const angle = Math.atan2(end.y - before.y, end.x - before.x);
+
+    // Arrow size proportional to stroke width
+    const arrowLen = strokeWidth * 2.2 + 4;
+    const arrowW = strokeWidth * 1.1 + 2;
+
+    // Tip is set back from the actual path end so the stroke doesn't overshoot
+    const tipX = end.x - Math.cos(angle) * 1;
+    const tipY = end.y - Math.sin(angle) * 1;
+    const baseX = tipX - Math.cos(angle) * arrowLen;
+    const baseY = tipY - Math.sin(angle) * arrowLen;
+    const leftX = baseX - Math.sin(angle) * arrowW;
+    const leftY = baseY + Math.cos(angle) * arrowW;
+    const rightX = baseX + Math.sin(angle) * arrowW;
+    const rightY = baseY - Math.cos(angle) * arrowW;
+
+    group.append("polygon")
+      .attr("points", `${tipX},${tipY} ${leftX},${leftY} ${rightX},${rightY}`)
+      .attr("fill", color)
+      .attr("class", "flow-arrow")
+      .style("opacity", 0)
+      .style("animation", `fadeFlow 1.2s ease-out ${index * 30}ms forwards`);
+  }
+
+  function drawFlows(filter = "all") {
+    flowGroup.selectAll("*").remove();
+
+    let filtered = flows;
+    if (filter === "top10") filtered = flows.slice(0, 10);
+    else if (filter === "brazil") filtered = flows.filter(d => getBroadRegion(d.t) === "brazil");
+    else if (filter === "caribbean") filtered = flows.filter(d => getBroadRegion(d.t) === "caribbean");
+    else if (filter === "namerica") filtered = flows.filter(d => getBroadRegion(d.t) === "namerica");
+
+    // Sort so smaller flows draw on top
+    filtered = [...filtered].sort((a, b) => b.emb - a.emb);
+
+    filtered.forEach((flow, i) => {
+      const src = regionCoords[flow.s];
+      const tgt = regionCoords[flow.t];
+      if (!src || !tgt) return;
+
+      // Skip intra-African flows for cleaner map
+      if (flow.t >= 60000 && flow.t < 70000) return;
+
+      const arcPath = generateArc(src, tgt);
+      if (!arcPath) return;
+
+      const sw = strokeScale(flow.emb);
+
+      const flowPath = flowGroup.append("path")
+        .attr("class", "flow-path")
+        .attr("d", arcPath)
+        .attr("stroke", sourceColorScale(flow.s))
+        .attr("stroke-width", sw)
+        .style("animation-delay", `${i * 30}ms`);
+
+      // Draw arrowhead triangle at the end of the arc
+      drawArrowhead(flowGroup, arcPath, sw, sourceColorScale(flow.s), i);
+
+      flowPath
+        .on("mouseover", function(event) {
+          tooltip.style("opacity", 1)
+            .html(`
+              <div class="tt-route">${src.name} → ${tgt.name}</div>
+              <div class="tt-stat">
+                <strong>${flow.emb.toLocaleString()}</strong> people embarked<br>
+                <strong>${flow.v}</strong> recorded voyages
+              </div>
+            `);
+        })
+        .on("mousemove", function(event) {
+          const [mx, my] = d3.pointer(event, document.getElementById("map-container"));
+          tooltip.style("left", (mx + 16) + "px").style("top", (my - 10) + "px");
+        })
+        .on("mouseout", () => tooltip.style("opacity", 0));
+    });
+  }
+
+  drawFlows();
+
+  // ──────────────────────────────────────────────
+  // REGION DOTS & LABELS
+  // ──────────────────────────────────────────────
+  const africaRegions = [60100, 60200, 60300, 60400, 60500, 60600, 60700, 60800];
+  const americaRegions = [21300, 21600, 31300, 35100, 36400, 34200, 32200, 50200, 50300, 50400, 42000, 34400, 36100, 37000, 41200, 50100];
+
+  const allRegions = [...africaRegions, ...americaRegions];
+
+  const dotsGroup = svg.append("g").attr("class", "dots");
+
+  allRegions.forEach(code => {
+    const r = regionCoords[code];
+    if (!r) return;
+    const [x, y] = projection([r.lng, r.lat]);
+    const isAfrica = code >= 60000;
+
+    dotsGroup.append("circle")
+      .attr("class", "region-dot")
+      .attr("cx", x).attr("cy", y)
+      .attr("r", isAfrica ? 4 : 3)
+      .attr("fill", isAfrica ? "#d4a856" : "#7a9ab8");
+
+    // Label offset logic
+    let dx = isAfrica ? 8 : -8;
+    let dy = 3;
+    let anchor = isAfrica ? "start" : "end";
+
+    // Special positioning overrides
+    if (code === 60800) { dx = 8; dy = -6; }
+    if (code === 60700) { dx = 8; dy = 12; }
+    if (code === 50400) { dx = -10; anchor = "end"; }
+    if (code === 42000) { dx = -10; anchor = "end"; }
+    if (code === 21300) { dx = 6; anchor = "start"; dy = -6; }
+    if (code === 21600) { dx = -8; anchor = "end"; dy = -6; }
+
+    dotsGroup.append("text")
+      .attr("class", `region-label ${isAfrica ? 'africa' : ''}`)
+      .attr("x", x + dx).attr("y", y + dy)
+      .attr("text-anchor", anchor)
+      .text(r.name);
+  });
+
+  // ──────────────────────────────────────────────
+  // FILTER BUTTONS
+  // ──────────────────────────────────────────────
+  d3.selectAll(".controls button").on("click", function() {
+    d3.selectAll(".controls button").classed("active", false);
+    d3.select(this).classed("active", true);
+    drawFlows(this.dataset.filter);
+  });
+
+  // ──────────────────────────────────────────────
+  // LEGEND
+  // ──────────────────────────────────────────────
+  const legendData = [
+    { label: "5,000+ embarked", w: 50 },
+    { label: "2,000–5,000", w: 35 },
+    { label: "500–2,000", w: 20 },
+    { label: "< 500", w: 10 },
+  ];
+
+  const legend = d3.select("#map-container").append("div").attr("class", "legend");
+  legend.append("div").attr("class", "legend-title").text("Voyage Volume");
+
+  legendData.forEach(d => {
+    const item = legend.append("div").attr("class", "legend-item");
+    item.append("div").attr("class", "legend-line")
+      .style("width", d.w + "px");
+    item.append("span").text(d.label);
+  });
+
+}).catch(err => {
+  // Fallback: draw without world basemap
+  console.warn("Could not load world topology, drawing flows only:", err);
+  svg.append("text")
+    .attr("x", width/2).attr("y", height/2)
+    .attr("text-anchor", "middle")
+    .attr("fill", "#8a8070")
+    .attr("font-size", 14)
+    .text("Map base layer unavailable — showing flow data only");
+});
+</script>
+</body>
+</html>

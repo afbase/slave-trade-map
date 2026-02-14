@@ -1,0 +1,91 @@
+/* Map container, land, dots, flows, labels */
+.map-area {
+  flex: 1;
+  min-width: 0;
+}
+
+#map-container {
+  width: 100%;
+  position: relative;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+#map-container svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.map-reset-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-reset-btn);
+  border-radius: 3px;
+  color: var(--color-reset-text);
+  cursor: pointer;
+  z-index: 10;
+  font-family: inherit;
+}
+
+.map-reset-btn:hover {
+  background: var(--color-reset-hover);
+}
+
+.land {
+  fill: var(--color-land);
+  stroke: var(--color-land-stroke);
+  stroke-width: 0.4;
+}
+
+.graticule {
+  fill: none;
+  stroke: var(--color-graticule);
+  stroke-width: 0.3;
+}
+
+.ocean-label {
+  font-style: italic;
+  fill: var(--color-ocean-label);
+  font-size: 18px;
+  pointer-events: none;
+}
+
+.continent-label {
+  fill: var(--color-continent-label);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  pointer-events: none;
+}
+
+.dest-dot {
+  transition: r 0.15s;
+}
+
+.dest-dot:hover {
+  r: 6;
+}
+
+.dest-label {
+  font-size: 9px;
+  font-weight: 600;
+  fill: var(--color-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+.flow-path {
+  fill: none;
+  stroke-linecap: round;
+  cursor: pointer;
+}
+
+.flow-path:hover {
+  filter: brightness(1.2);
+}

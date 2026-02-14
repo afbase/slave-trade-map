@@ -1,0 +1,11 @@
+id,name,category,price,stock
+1,Laptop,Electronics,999.99,15
+2,Coffee Mug,Kitchen,12.99,50
+3,Desk Chair,Furniture,299.99,8
+4,Notebook,Office,4.99,100
+5,Headphones,Electronics,79.99,25
+6,Water Bottle,Kitchen,19.99,60
+7,Monitor,Electronics,349.99,12
+8,Pen Set,Office,14.99,75
+9,Standing Desk,Furniture,599.99,5
+10,Keyboard,Electronics,89.99,30

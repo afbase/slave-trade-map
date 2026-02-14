@@ -1,0 +1,275 @@
+position,name,label,type,format
+1,VOYAGEID,Voyage identification number,double,F6.0
+2,ADLT1IMP,Imputed number of adults at first port of purchase,double,F4.0
+3,ADLT2IMP,Imputed number of adults who died on middle passage,double,F4.0
+4,ADLT3IMP,Imputed number ofAdults landed at first port,double,F4.0
+5,ADPSALE1,Second place of slave landing,double,F5.0
+6,ADPSALE2,Third place of slave landing,double,F5.0
+7,ADULT1,Adults at first port of purchase (gender unspecified),double,F3.0
+8,ADULT2,Adults who died on middle passage (gender unspecified),double,F3.0
+9,ADULT3,Adults at first place of landing (gender unspecified),double,F3.0
+10,ADULT4,Adults embarked at second port of purchase (gender unspecified),double,F3.0
+11,ADULT5,Adults embarked at third port of purchase,double,F3.0
+12,ADULT6,Adults disembarked at second place of landing,double,F3.0
+13,ADULT7,Imputed adults when leaving Africa or arriving at port of landing,double,F4.0
+14,ARRPORT,First intended port of disembarkation,double,F5.0
+15,ARRPORT2,Second intended port of disembarkation,double,F5.0
+16,BOY1,Boys at first port of purchase,double,F3.0
+17,BOY2,Boys died on middle passage,double,F3.0
+18,BOY3,Boys disembarked at first place of landing,double,F3.0
+19,BOY4,Boys embarked at second port of purchase,double,F3.0
+20,BOY5,Boys embarked at third port of purchase,double,F3.0
+21,BOY6,Boys disembarked at second place of landing,double,F3.0
+22,BOY7,Imputed boys when leaving Africa or arriving at port of landing,double,F4.0
+23,BOYRAT1,Percentage of boys among embarked slaves,double,F8.5
+24,BOYRAT3,Percentage of boys among landed slaves,double,F8.5
+25,BOYRAT7,Percentage of boys when leaving Africa or arriving at port of landing,double,F8.5
+26,CAPTAINA,First captain's name,string,A60
+27,CAPTAINB,Second captain's name,string,A40
+28,CAPTAINC,Third captain's name,string,A40
+29,CHIL1IMP,Imputed number of children at first port of purchase,double,F4.0
+30,CHIL2IMP,Imputed number of children who died on middle passage,double,F4.0
+31,CHIL3IMP,Imputed number of children landed at first port,double,F4.0
+32,CHILD1,Children at first port of purchase (gender unspecified),double,F3.0
+33,CHILD2,Children who died on middle passage (gender unspecified),double,F3.0
+34,CHILD3,Children at first place of landing (gender unspecified),double,F3.0
+35,CHILD4,Children embarked at second port of purchase (gender unspecified),double,F3.0
+36,CHILD5,Children embarked at third port of purchase,double,F3.0
+37,CHILD6,Children disembarked at second place of landing,double,F3.0
+38,CHILD7,Imputed children when leaving Africa or arriving at port of landing,double,F4.0
+39,CHILRAT1,Child ratio among embarked slaves,double,F8.5
+40,CHILRAT3,Child ratio among landed slaves,double,F8.5
+41,CHILRAT7,Child ratio at embarkation or disembarkation,double,F8.5
+42,CONSTREG,Region where vessel constructed,double,F5.0
+43,CREW,Number of crew unspecified,double,F3.0
+44,CREW1,Crew at voyage outset,double,F3.0
+45,CREW2,Crew at departure from last port of slave purchase,double,F3.0
+46,CREW3,Crew at first landing of slaves,double,F2.0
+47,CREW4,Crew when return voyage began,double,F2.0
+48,CREW5,Crew at end of voyage,double,F2.0
+49,CREWDIED,Crew deaths during complete voyage,double,F3.0
+50,D1SLATRA,Day that slave purchase began,double,F2.0
+51,D1SLATRB,Month that slave purchase began,double,F2.0
+52,D1SLATRC,Year that slave purchase began,double,F4.0
+53,DATARR32,Day of first disembarkation of slaves,double,F2.0
+54,DATARR33,Month of first disembarkation of slaves,double,F2.0
+55,DATARR34,Year of first disembarkation of slaves,double,F4.0
+56,DATARR36,Day of arrival at second place of landing,double,F2.0
+57,DATARR37,Month of arrival at second place of landing,double,F2.0
+58,DATARR38,Year of arrival at second place of landing,double,F4.0
+59,DATARR39,Day of third disembarkation of slaves,double,F2.0
+60,DATARR40,Month of third disembarkation of slaves,double,F2.0
+61,DATARR41,Year of third disembarkation of slaves,double,F4.0
+62,DATARR43,Day on which voyage completed,double,F2.0
+63,DATARR44,Month in which voyage completed,double,F2.0
+64,DATARR45,Year in which voyage completed,double,F4.0
+65,DATEBUY,Date that slave purchase began,double,ADATE10
+66,DATEDEP,Date that voyage began,double,ADATE10
+67,DATEDEPA,Day that voyage began,double,F2.0
+68,DATEDEPAM,Date left on return voyage,double,ADATE10
+69,DATEDEPB,Month that voyage began,double,F2.0
+70,DATEDEPC,Year that voyage began,double,F4.0
+71,DATEEND,Date when voyage completed,double,ADATE10
+72,DATELAND1,Date that slaves landed at first place,double,ADATE10
+73,DATELAND2,Date of arrival at second place of landing,double,ADATE10
+74,DATELAND3,Date that slaves landed at third place,double,ADATE10
+75,DATELEFTAFR,Date that vessel left last slaving port,double,ADATE10
+76,DDEPAM,Day of departure from last place of landing,double,F2.0
+77,DDEPAMB,Month of departure from last place of landing,double,F2.0
+78,DDEPAMC,Year of departure from last place of landing,double,F4.0
+79,DEPTREGIMP,Imputed region where voyage began,double,F5.0
+80,DEPTREGIMP1,Imputed broad region where voyage began,double,F5.0
+81,DLSLATRA,Day that vessel left last slaving port,double,F2.0
+82,DLSLATRB,Month that vessel left last slaving port,double,F2.0
+83,DLSLATRC,Year that vessel left last slaving port,double,F4.0
+84,EMBPORT,First intended port of embarkation,double,F5.0
+85,EMBPORT2,Second intended port of embarkation,double,F5.0
+86,EMBREG,First intended region of purchase of slaves,double,F5.0
+87,EMBREG2,Second intended region of purchase of slaves,double,F5.0
+88,EVGREEN,Voyage in 1999 CD-ROM,string,A5
+89,FATE,Particular outcome of voyage,double,F3.0
+90,FATE2,Outcome of voyage for slaves,double,F1.0
+91,FATE3,Outcome of voyage if vessel captured,double,F2.0
+92,FATE4,Outcome of voyage for owner,double,F2.0
+93,FEMALE1,Females at first port of purchase (age unspecified),double,F3.0
+94,FEMALE2,Females who died on middle passage (age unspecified),double,F3.0
+95,FEMALE3,Females at first place of landing (age unspecified),double,F3.0
+96,FEMALE4,Females embarked at second port of purchase (age unspecified),double,F3.0
+97,FEMALE5,Females embarked at third port of puchase,double,F3.0
+98,FEMALE6,Females disembarked at second place of landing,double,F3.0
+99,FEMALE7,Imputed females when leaving Africa or arriving at port of landing,double,F4.0
+100,FEML1IMP,Imputed number of females at first port of purchase,double,F4.0
+101,FEML2IMP,Imputed number of females who died on middle passage,double,F4.0
+102,FEML3IMP,Imputed number of females landed at first port,double,F4.0
+103,GIRL1,Girls at first port of purchase,double,F3.0
+104,GIRL2,Girls died on middle passage,double,F3.0
+105,GIRL3,Girls disembarked at first place of landing,double,F3.0
+106,GIRL4,Girl embarked at second port of purchase,double,F3.0
+107,GIRL5,Girls embarked at third port of purchase,double,F3.0
+108,GIRL6,Girls disembarked at second place of landing,double,F3.0
+109,GIRL7,Imputed girls when leaving Africa or arriving at port of landing,double,F4.0
+110,GIRLRAT1,Percentage of girls among embarked slaves,double,F8.5
+111,GIRLRAT3,Percentage of girls among landed slaves,double,F8.5
+112,GIRLRAT7,Percentage of girls when leaving Africa or arriving at port of landing,double,F8.5
+113,GUNS,Guns mounted,double,F2.0
+114,INFANT1,Infants at first port of purchase,double,F3.0
+115,INFANT2,Infant deaths during middle passage,double,F3.0
+116,INFANT3,Infants at first place of landing,double,F3.0
+117,INFANT4,Infants embarked at second port of purchase,double,F3.0
+118,INFANT5,Infants embarked at third port of purchase,double,F3.0
+119,INFANT6,Infants disembarked at seccond place f landing,double,F3.0
+120,JAMCASPR,Standardized average price of prime slaves,double,F8.2
+121,MAJBUYPT,Principal port of slave purchase,double,F5.0
+122,MAJBYIMP,Imputed principal region of slave purchase,double,F5.0
+123,MAJBYIMP1,Imputed broad region of slave purchase,double,F5.0
+124,MAJSELPT,Prncipal port of slave disembarkation,double,F5.0
+125,MALE1,Males at first port of purchase (age unspecified),double,F3.0
+126,MALE2,Males who died on middle passage (age unspecified),double,F3.0
+127,MALE3,Males at first place of landing (age unspecified),double,F3.0
+128,MALE4,Males embarked at second port of purchase (age unspecified),double,F3.0
+129,MALE5,Males embarked at third port of purchase,double,F3.0
+130,MALE6,Males disembarked at second place of landing,double,F3.0
+131,MALE7,Imputed males when leaving Africa or arriving at port of landing,double,F4.0
+132,MALE1IMP,Imputed number of males at first port of purchase,double,F4.0
+133,MALE2IMP,Imputed number of males who died on middle passage,double,F4.0
+134,MALE3IMP,Imputed number of males landed at first port,double,F4.0
+135,MALRAT1,Male ratio among embarked slaves,double,F8.5
+136,MALRAT3,Male ratio among landed slaves,double,F8.5
+137,MALRAT7,Male ratio at embarkation or disembarkation,double,F8.5
+138,MEN1,Men at first port of purchase,double,F3.0
+139,MEN2,Men died on middle passage,double,F3.0
+140,MEN3,Men disembarked at first place of landing,double,F3.0
+141,MEN4,Men embarked at second port of purchase,double,F3.0
+142,MEN5,Men embarked at third port of purchase,double,F3.0
+143,MEN6,Men disembarked at second place of landing,double,F3.0
+144,MEN7,Imputed men when leaving Africa or arriving at port of landing,double,F4.0
+145,MENRAT1,Percentage of men among embarked slaves,double,F8.5
+146,MENRAT3,Percentage of men among landed slaves,double,F8.5
+147,MENRAT7,Percentage of men when leaving Africa or arriving at port of landing,double,F8.5
+148,MJBYPTIMP,Imputed principal port of slave purchase,double,F5.0
+149,MJSELIMP,Imputed principal region of slave disembarkation,double,F5.0
+150,MJSELIMP1,Imputed broad region of landing,double,F5.0
+151,MJSLPTIMP,Imputed principal place of slave disembarkation,double,F5.0
+152,NATINIMP,Imputed country in which ship registered (flag*),double,F2.0
+153,NATIONAL,Country in which ship registered,double,F2.0
+154,NCAR13,Slaves carried from first port of purchase,double,F4.0
+155,NCAR15,Slaves carried from second port of purchase,double,F4.0
+156,NCAR17,Slaves carried from third port of purchase,double,F4.0
+157,NDESERT,Total number of crew deserted,double,F2.0
+158,NPAFTTRA,Port of call before Atlantic crossing,double,F5.0
+159,NPPRETRA,Number of ports of call prior to buying slaves,double,F3.0
+160,NPPRIOR,Number of ports of call in Americas prior to sale of slaves,double,F1.0
+161,OWNERA,First owner of venture,string,A60
+162,OWNERB,Second owner of venture,string,A40
+163,OWNERC,Third owner of venture,string,A40
+164,OWNERD,Fourth owner of venture,string,A40
+165,OWNERE,Fifth owner of venture,string,A40
+166,OWNERF,Sixth owner of venture,string,A40
+167,OWNERG,Seventh owner of venture,string,A40
+168,OWNERH,Eighth owner of venture,string,A40
+169,OWNERI,Ninth owner of venture,string,A40
+170,OWNERJ,Tenth owner of venture,string,A40
+171,OWNERK,Eleventh owner of venture,string,A40
+172,OWNERL,Twelfth owner of venture,string,A40
+173,OWNERM,Thirteenth owner of venture,string,A40
+174,OWNERN,Fourteenth owner of venture,string,A40
+175,OWNERO,Fifteenth owner of venture,string,A40
+176,OWNERP,Sixteenth owner of venture,string,A40
+177,PLAC1TRA,First place of slave purchase,double,F5.0
+178,PLAC2TRA,Second place of slave purchase,double,F5.0
+179,PLAC3TRA,Third place of slave purchase,double,F5.0
+180,PLACCONS,Place where vessel constructed,double,F5.0
+181,PLACREG,Place where vessel registered,double,F5.0
+182,PORTDEP,Port of departure,double,F5.0
+183,PORTRET,Port at which voyage ended,double,F5.0
+184,PTDEPIMP,Imputed port where voyage began,double,F5.0
+185,REGARR,First intended region of slave landing,double,F5.0
+186,REGARR2,Second intended region of slave landing,double,F5.0
+187,REGDIS1,First region of slave landing,double,F5.0
+188,REGDIS2,Second region of slave landing,double,F5.0
+189,REGDIS3,Third region of slave landing,double,F5.0
+190,REGEM1,First region of embarkation of slaves,double,F5.0
+191,REGEM2,Second region of embarkation of slaves,double,F5.0
+192,REGEM3,Third region of embarkation of slaves,double,F5.0
+193,REGISREG,Region where vessel registered,double,F5.0
+194,RESISTANCE,African resistance,double,F1.0
+195,RETRNREG,Region of return,double,F5.0
+196,RETRNREG1,Broad region of return,double,F5.0
+197,RIG,Rig of vessel,double,F2.0
+198,SAILD1,Crew died before first place of trade in Africa,double,F2.0
+199,SAILD2,Crew died while ship was on African coast,double,F2.0
+200,SAILD3,Crew died during middle passage,double,F2.0
+201,SAILD4,Crew died in the Americas,double,F2.0
+202,SAILD5,Crew died on return voyage,double,F2.0
+203,SHIPNAME,Name of vessel,string,A60
+204,SLA1PORT,First place of slave landing,double,F5.0
+205,SLAARRIV,Total slaves arrived at first port of disembarkation,double,F4.0
+206,SLADAFRI,Slaves died before leaving Africa,double,F3.0
+207,SLADAMER,Slave died between arrival and sale,double,F3.0
+208,SLADVOY,Number of slaves died between Africa and Americas,double,F4.0
+209,SLAMIMP,Imputed total slaves disembarked,double,F5.0
+210,SLAS32,Slaves disembarked at first place,double,F4.0
+211,SLAS36,Slaves disembarked at second place,double,F4.0
+212,SLAS39,Slaves disembarked at third place,double,F4.0
+213,SLAVEMA1,Total slaves embarked with age identified,double,F4.0
+214,SLAVEMA3,Total slaves identified by age at first port of landing,double,F4.0
+215,SLAVEMA7,Total slaves identified by age when leaving Africa or arriving at port of landing,double,F4.0
+216,SLAVEMX1,Total slaves embarked with gender identified,double,F4.0
+217,SLAVEMX3,Total slaves identified by gender at first port of landing,double,F4.0
+218,SLAVEMX7,Total slaves identified by gender when leaving Africa or arriving at port of landing,double,F4.0
+219,SLAVMAX1,Total slaves embarked with age and gender identified,double,F4.0
+220,SLAVMAX3,Total slaves identified by age and gender at first port of landing,double,F4.0
+221,SLAVMAX7,Total slaves identified by age and gender when leaving Africa or arriving at port of landing,double,F4.0
+222,SLAXIMP,Imputed total slaves embarked,double,F5.0
+223,SLINTEN2,Slaves intended from second port of purchase,double,F4.0
+224,SLINTEND,Slaves intended from first port of purchase,double,F4.0
+225,SOURCEA,First source of information,string,A60
+226,SOURCEB,Second source of information,string,A50
+227,SOURCEC,Third source of information,string,A50
+228,SOURCED,Fourth source of information,string,A50
+229,SOURCEE,Fifth source of information,string,A50
+230,SOURCEF,Sixth source of information,string,A50
+231,SOURCEG,Seventh source of information,string,A50
+232,SOURCEH,Eighth source of information,string,A50
+233,SOURCEI,Ninth source of information,string,A50
+234,SOURCEJ,Tenth source of information,string,A50
+235,SOURCEK,Eleventh source of information,string,A50
+236,SOURCEL,Twelfth source of information,string,A50
+237,SOURCEM,Thirteenth source of information,string,A50
+238,SOURCEN,Fourteenth source of information,string,A50
+239,SOURCEO,Fifteenth source of information,string,A50
+240,SOURCEP,Sixteenth source of information,string,A50
+241,SOURCEQ,Seventeenth source of information,string,A50
+242,SOURCER,Eighteenth source of information,string,A50
+243,TONMOD,"Tonnage standardized on British measured tons, 1773-1835",double,F7.1
+244,TONNAGE,Tonnage of vessel,double,F4.0
+245,TONTYPE,Definition of ton used in tonnage,double,F2.0
+246,TSLAVESD,Total slaves on board at departure from last slaving port,double,F4.0
+247,TSLAVESP,Total slaves purchase,double,F4.0
+248,TSLMTIMP,Imputed number of slaves embarked for mortality calculation,double,F4.0
+249,VOY1IMP,Imputed voyage length from departure to first port of landing,double,F5.0
+250,VOY2IMP,Imputed length of Middle Passage,double,F5.0
+251,VOYAGE,Length of middle passage in days,double,F3.0
+252,VYMRTIMP,Imputed slave deaths during middle passage,double,F5.0
+253,VYMRTRAT,Slave mortality rate (slave deaths/ slavesembarked),double,F8.5
+254,WOMEN1,Women at first port of purchase,double,F3.0
+255,WOMEN2,Women died on middle passage,double,F3.0
+256,WOMEN3,Women disembarked at first place of landing,double,F3.0
+257,WOMEN4,Women embarked at second port of purchase,double,F3.0
+258,WOMEN5,Women embarked at third port of purchase,double,F3.0
+259,WOMEN6,Women disembarked at second place of landing,double,F3.0
+260,WOMEN7,Imputed women when leaving Africa or arriving at port of landing,double,F4.0
+261,WOMRAT1,Percentage of women among embarked slaves,double,F8.5
+262,WOMRAT3,Percentage of women among landed slaves,double,F8.5
+263,WOMRAT7,Percentage of women when leaving Africa or arriving at port of landing,double,F8.5
+264,XMIMPFLAG,Voyage groupings for estimating imputed slaves,double,F3.0
+265,YEAR5,Quinquennium in which voyage occurred,double,F3.0
+266,YEAR10,Decade in which voyage occurred,double,F3.0
+267,YEAR25,Quarter-century in which voyage occurred,double,F3.0
+268,YEAR100,Century in which voyage occurred,double,F4.0
+269,YEARAF,Year departed Africa (imputed),double,F4.0
+270,YEARAM,Year of arrival at port of disembarkation (imputed),double,F4.0
+271,YEARDEP,Imputed year in which voyage began,double,F4.0
+272,YRCONS,Year of vessel's construction,double,F4.0
+273,YRREG,Year of vessel's registration,double,F4.0
+274,filter_$,(YEARAM >= 1798 & YEARAM <= 1807) & (MJBYPTIMP >= 60201 & MJBYPTIMP <= 60299) & MEN7 > 0 (FILTER),double,F1.0

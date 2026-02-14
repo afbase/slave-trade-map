@@ -1,0 +1,57 @@
+/* Unified toggle group — replaces .mode-toggle and .dataset-toggle */
+.toggle-group {
+  display: flex;
+  gap: 4px;
+}
+
+.toggle-group button {
+  background: var(--color-bg-toggle);
+  color: var(--color-text-light);
+  border: 1px solid var(--color-border-toggle);
+  padding: 5px 14px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.toggle-group button:first-child {
+  border-radius: 3px 0 0 3px;
+}
+
+.toggle-group button:last-child {
+  border-radius: 0 3px 3px 0;
+}
+
+.toggle-group button.active {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent-dark);
+}
+
+.toggle-group button:hover:not(.active) {
+  background: var(--color-bg-hover-alt);
+}
+
+/* About button (standalone toggle) */
+.about-btn {
+  background: var(--color-bg-toggle);
+  color: var(--color-text-light);
+  border: 1px solid var(--color-border-toggle);
+  padding: 5px 14px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.about-btn:hover {
+  background: var(--color-bg-hover-alt);
+}
+
+.about-btn.active {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent-dark);
+}

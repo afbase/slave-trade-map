@@ -1,0 +1,16 @@
+/* Loading spinner and error display */
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--color-text-disabled);
+  font-size: 14px;
+}
+
+.error-box {
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  color: var(--color-error-text);
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}

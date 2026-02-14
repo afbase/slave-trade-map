@@ -1,0 +1,88 @@
+/* Voyage details area and accordion */
+.voyage-details-area {
+  margin-top: 8px;
+  padding: 12px 16px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.voyage-details-area h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-dark);
+  margin-bottom: 4px;
+}
+
+.methodology-note {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--color-text-disabled);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.voyage-count {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: 10px;
+}
+
+.accordion-header {
+  padding: 6px 8px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border-light);
+  user-select: none;
+  transition: background 0.1s;
+}
+
+.accordion-header:hover {
+  background: var(--color-bg-hover);
+}
+
+.accordion-arrow {
+  font-size: 11px;
+  color: var(--color-text-disabled);
+}
+
+.accordion-origin {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-dark);
+}
+
+.accordion-stats {
+  font-size: 11px;
+  color: var(--color-text-disabled);
+  font-weight: normal;
+}
+
+.accordion-body {
+  padding: 0 0 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.voyage-row {
+  transition: background 0.1s;
+}
+
+.voyage-row.expandable {
+  cursor: pointer;
+}
+
+.voyage-row:hover td {
+  background: var(--color-bg-hover);
+}
+
+.voyage-expand-row td {
+  background: var(--color-bg-expand);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-border-warm);
+}
+
+.voyage-detail-content {
+  font-size: 11px;
+  color: var(--color-text-light);
+  line-height: 1.6;
+}

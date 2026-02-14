@@ -1,0 +1,38 @@
+/* Dataset section headers and accent colors (combined mode) */
+.dataset-section-header {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 0 4px;
+  margin-top: 8px;
+  border-bottom: 1px solid var(--color-border-warm);
+}
+
+.dataset-section-header.ta-header {
+  color: var(--color-ta);
+  border-bottom-color: var(--color-ta-border);
+}
+
+.dataset-section-header.iam-header {
+  color: var(--color-iam);
+  border-bottom-color: var(--color-iam-border);
+}
+
+.ta-accent {
+  color: var(--color-ta);
+  font-weight: 600;
+}
+
+.iam-accent {
+  color: var(--color-iam);
+  font-weight: 600;
+}
+
+.dest-stats-breakdown {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+
+.dest-stats-breakdown span {
+  margin-right: 8px;
+}

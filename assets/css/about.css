@@ -1,0 +1,106 @@
+/* About tab and documentation content */
+.about-container {
+  padding: 24px 32px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  max-height: 70vh;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-text);
+}
+
+.about-section {
+  margin-bottom: 28px;
+}
+
+.about-section:last-child {
+  margin-bottom: 0;
+}
+
+.about-section h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-dark);
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.about-body {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--color-text-mid);
+}
+
+.about-body h3 {
+  font-family: var(--font-system);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-dark);
+  margin-top: 16px;
+  margin-bottom: 4px;
+}
+
+.about-body p {
+  margin-bottom: 10px;
+}
+
+.about-body ul {
+  margin: 6px 0 10px 20px;
+}
+
+.about-body li {
+  margin-bottom: 4px;
+}
+
+/* Interpretation table */
+.interpretation-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.interpretation-table th {
+  text-align: left;
+  padding: 6px 8px;
+  background: var(--color-interp-header-bg);
+  border-bottom: 2px solid var(--color-border-mid);
+  color: var(--color-text-mid);
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.interpretation-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border-warm);
+  color: var(--color-text-mid);
+  vertical-align: top;
+}
+
+.interpretation-table tr:hover td {
+  background: var(--color-bg-expand);
+}
+
+.interpretation-table td:first-child {
+  font-weight: 600;
+  color: var(--color-text-dark);
+  white-space: nowrap;
+}
+
+/* Citation */
+.citation {
+  font-family: var(--font-serif);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--color-text-muted);
+  padding: 8px 12px;
+  border-left: 3px solid var(--color-citation-border);
+  margin-top: 8px;
+  line-height: 1.6;
+}
