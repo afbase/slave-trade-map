@@ -181,16 +181,17 @@ function renderTimeline(yearlyFlowsJson, globalMinYear, globalMaxYear) {
     .tickSize(3)
     .tickFormat(function(d) { return d; });
 
+  var cs = getComputedStyle(document.documentElement);
   g.append("g")
     .attr("class", "tl-axis")
     .attr("transform", "translate(0," + innerH + ")")
     .call(xAxis)
     .selectAll("text")
     .style("font-size", "8px")
-    .style("fill", "#888");
+    .style("fill", cs.getPropertyValue('--color-text-muted').trim() || "#888");
 
   g.selectAll(".tl-axis path, .tl-axis line")
-    .style("stroke", "#ccc");
+    .style("stroke", cs.getPropertyValue('--color-border').trim() || "#ccc");
 }
 
 function clearTimeline() {

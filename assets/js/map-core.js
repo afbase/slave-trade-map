@@ -38,6 +38,7 @@ function initMap() {
   // Background
   _svg
     .append("rect")
+    .attr("class", "map-bg")
     .attr("width", _width)
     .attr("height", _height)
     .attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || "#f5f3ef");

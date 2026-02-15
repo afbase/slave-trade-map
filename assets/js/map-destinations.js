@@ -26,6 +26,8 @@ function renderDestinations(destinationsJson, mode) {
     var isLarge = dest.total_embarked > 50000;
     var r = isLarge ? 5 : 3.5;
 
+    var cs = getComputedStyle(document.documentElement);
+    var isDark = document.body.classList.contains('dark');
     var dot = _dotsGroup
       .append("circle")
       .attr("class", "dest-dot")
@@ -33,8 +35,8 @@ function renderDestinations(destinationsJson, mode) {
       .attr("cy", y)
       .attr("r", r / currentSK)
       .attr("data-base-r", r)
-      .attr("fill", "#5a7a8a")
-      .attr("stroke", "#fff")
+      .attr("fill", cs.getPropertyValue('--color-accent').trim() || "#5a7a8a")
+      .attr("stroke", isDark ? "#2a2e33" : "#fff")
       .attr("stroke-width", 1 / currentK)
       .style("cursor", "pointer");
 
