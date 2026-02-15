@@ -5,6 +5,9 @@
 # HTML title tag content
 title = "Transatlantic Slave Trade — Flow Map"
 
+# Base path for when embedded under a subdirectory
+base_path = "slave-trade-map"
+
 # include `assets` in web platform
 [web.resource]
 
