@@ -40,7 +40,7 @@ function initMap() {
     .append("rect")
     .attr("width", _width)
     .attr("height", _height)
-    .attr("fill", "#f5f3ef");
+    .attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || "#f5f3ef");
 
   // Master group that zoom will transform
   _masterGroup = _svg.append("g").attr("class", "map-content");

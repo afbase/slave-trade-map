@@ -1,0 +1,45 @@
+name: Build WASM Artifact
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  packages: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/afbase/rust-zola-builder:pinned
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build WASM
+        run: dx build --release --platform web
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push artifact image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: .github/Dockerfile.artifact
+          push: true
+          tags: ghcr.io/afbase/slave-trade-map:latest
+
+      - name: Trigger slavecodes_org rebuild
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          repository: afbase/slavecodes_org
+          event-type: slave-trade-map-updated

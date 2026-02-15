@@ -1,7 +1,11 @@
-/* Base reset and body styles */
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* Base reset scoped to app container */
+.app-container *, .app-container *::before, .app-container *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
-body {
+#slave-trade-map-root .app-container {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-system);

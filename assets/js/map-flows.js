@@ -32,7 +32,10 @@ function renderFlowGroup(flows, destPt, dataset, zOffset) {
   // Sort largest first
   flows.sort(function(a, b) { return b.total_embarked - a.total_embarked; });
 
-  var trunkColor = dataset === "transatlantic" ? "#6a5830" : "#2a5a6a";
+  var cs = getComputedStyle(document.documentElement);
+  var trunkColor = dataset === "transatlantic"
+    ? (cs.getPropertyValue('--color-ta').trim() || "#6a5830")
+    : (cs.getPropertyValue('--color-iam').trim() || "#2a5a6a");
 
   // Draw stems
   flows.forEach(function(flow) {
@@ -198,7 +201,7 @@ function renderFlows(flowsJson, destCode) {
       dot.attr("fill", "#c04030").attr("r", 6 / sk).attr("data-base-r", 6);
     } else {
       var baseR = +this.getAttribute("data-base-r") || 3.5;
-      dot.attr("fill", "#5a7a8a").attr("r", baseR / sk);
+      dot.attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim() || "#5a7a8a").attr("r", baseR / sk);
     }
   });
 }
@@ -210,7 +213,7 @@ function clearFlows() {
     var sk = Math.sqrt(k);
     _dotsGroup.selectAll(".dest-dot").each(function() {
       var baseR = +this.getAttribute("data-base-r") || 3.5;
-      d3.select(this).attr("fill", "#5a7a8a").attr("r", baseR / sk).attr("data-base-r", 3.5);
+      d3.select(this).attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim() || "#5a7a8a").attr("r", baseR / sk).attr("data-base-r", 3.5);
     });
   }
   // Remove legend when flows are cleared
