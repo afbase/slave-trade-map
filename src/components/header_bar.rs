@@ -28,19 +28,19 @@ pub fn HeaderBar() -> Element {
                 h1 { "{title_text}" }
                 div { class: "subtitle", "{subtitle_text}" }
             }
-            div { class: "header-controls",
-                DestinationSearch {}
-                DatasetToggle {}
-                ModeToggle {}
-                // About toggle
-                button {
-                    class: if (state.show_about)() { "about-btn active" } else { "about-btn" },
-                    onclick: move |_| {
-                        let cur = *state.show_about.peek();
-                        state.show_about.set(!cur);
-                    },
-                    "About"
-                }
+        }
+        div { class: "header-controls",
+            DestinationSearch {}
+            DatasetToggle {}
+            ModeToggle {}
+            // About toggle
+            button {
+                class: if (state.show_about)() { "about-btn active" } else { "about-btn" },
+                onclick: move |_| {
+                    let cur = *state.show_about.peek();
+                    state.show_about.set(!cur);
+                },
+                "About"
             }
         }
     }
