@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Route Planner Tests</title>
+<style>
+  body { font-family: monospace; margin: 20px; background: #1a1a2e; color: #e0e0e0; }
+  .pass { color: #4caf50; }
+  .fail { color: #f44336; }
+  .section { margin: 12px 0 4px; font-weight: bold; color: #82b1ff; }
+  #results { white-space: pre-wrap; }
+  .summary { margin-top: 16px; padding: 8px; border-top: 1px solid #555; font-size: 14px; }
+</style>
+</head>
+<body>
+<h2>Route Planner Unit Tests</h2>
+<div id="results"></div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<script src="../assets/js/coords.js"></script>
+<script src="../assets/js/route-planner.js"></script>
+<script>
+(function() {
+  var out = document.getElementById("results");
+  var passed = 0, failed = 0;
+
+  function log(msg) { out.textContent += msg + "\n"; }
+  function section(name) { log("\n--- " + name + " ---"); }
+  function assert(name, condition) {
+    if (condition) { passed++; log("  PASS: " + name); }
+    else { failed++; log("  FAIL: " + name); }
+  }
+
+  var WORLD_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+
+  // Caribbean, Brazil, North America test destinations
+  var DEST_CARIBBEAN = 35100;   // Jamaica
+  var DEST_BRAZIL    = 50200;   // Bahia
+  var DEST_NORTHAM   = 21300;   // Charleston (South Carolina)
+
+  var SOURCES = [60100, 60200, 60300, 60400, 60500, 60600, 60700, 60800, 60900];
+
+  // Load land features then run tests
+  d3.json(WORLD_URL).then(function(world) {
+    var countries = topojson.feature(world, world.objects.countries);
+    window._landFeatures = countries.features;
+
+    // Set up a dummy projection for convergePt
+    var projection = d3.geoNaturalEarth1().center([-15, 5]).scale(210).translate([600, 320]);
+    var dummyConverge = [400, 300];
+
+    // ---- Test 1: All 9 sources produce non-null waypoints ----
+    section("1. Non-null waypoints for all sources x 3 destinations");
+    var dests = [DEST_CARIBBEAN, DEST_BRAZIL, DEST_NORTHAM];
+    var destNames = ["Caribbean (Jamaica)", "Brazil (Bahia)", "North America (Charleston)"];
+    SOURCES.forEach(function(src) {
+      dests.forEach(function(dest, di) {
+        var wps = computeDynamicWaypoints(src, dest, dummyConverge);
+        assert(src + " -> " + destNames[di] + " non-null", wps !== null && wps.length > 0);
+      });
+    });
+
+    // ---- Test 2: No waypoint segment crosses land (60100-60800) ----
+    section("2. No waypoint on land for sources 60100-60800");
+    var landSources = [60100, 60200, 60300, 60400, 60500, 60600, 60700, 60800];
+    landSources.forEach(function(src) {
+      dests.forEach(function(dest, di) {
+        // Clear cache to force fresh computation
+        _waypointCache = {};
+        var wps = computeDynamicWaypoints(src, dest, dummyConverge);
+        if (!wps) { assert(src + " -> " + destNames[di] + " no land (null wps)", false); return; }
+        var onLand = false;
+        for (var w = 0; w < wps.length; w++) {
+          var pt = [wps[w].lng, wps[w].lat];
+          for (var f = 0; f < window._landFeatures.length; f++) {
+            if (d3.geoContains(window._landFeatures[f], pt)) {
+              onLand = true;
+              break;
+            }
+          }
+          if (onLand) break;
+        }
+        assert(src + " -> " + destNames[di] + " no waypoint on land", !onLand);
+      });
+    });
+
+    // ---- Test 3: SE Africa (60800) always has a point south of -30 lat ----
+    section("3. SE Africa route has point south of -30 lat");
+    _waypointCache = {};
+    dests.forEach(function(dest, di) {
+      var wps = computeDynamicWaypoints(60800, dest, dummyConverge);
+      var hasSouth = false;
+      if (wps) {
+        for (var w = 0; w < wps.length; w++) {
+          if (wps[w].lat < -30) { hasSouth = true; break; }
+        }
+      }
+      assert("60800 -> " + destNames[di] + " has point < -30 lat", hasSouth);
+    });
+
+    // ---- Test 4: Waypoints differ for different destinations ----
+    section("4. Waypoints differ for different destinations");
+    _waypointCache = {};
+    SOURCES.forEach(function(src) {
+      var wpCarib = computeDynamicWaypoints(src, DEST_CARIBBEAN, dummyConverge);
+      _waypointCache = {};
+      var wpBrazil = computeDynamicWaypoints(src, DEST_BRAZIL, dummyConverge);
+      var same = true;
+      if (wpCarib && wpBrazil) {
+        if (wpCarib.length !== wpBrazil.length) { same = false; }
+        else {
+          for (var i = 0; i < wpCarib.length; i++) {
+            if (wpCarib[i].lat !== wpBrazil[i].lat || wpCarib[i].lng !== wpBrazil[i].lng) {
+              same = false; break;
+            }
+          }
+        }
+      }
+      assert(src + " Caribbean vs Brazil differ", !same);
+    });
+
+    // ---- Test 5: Senegambia (60100) gets waypoints ----
+    section("5. Senegambia gets waypoints");
+    _waypointCache = {};
+    var senWps = computeDynamicWaypoints(60100, DEST_CARIBBEAN, dummyConverge);
+    assert("60100 -> Caribbean has waypoints", senWps !== null && senWps.length > 0);
+    _waypointCache = {};
+    var senWps2 = computeDynamicWaypoints(60100, DEST_BRAZIL, dummyConverge);
+    assert("60100 -> Brazil has waypoints", senWps2 !== null && senWps2.length > 0);
+
+    // ---- Test 6: Cache returns identical result ----
+    section("6. Cache returns identical result on second call");
+    _waypointCache = {};
+    var first = computeDynamicWaypoints(60500, DEST_CARIBBEAN, dummyConverge);
+    var second = computeDynamicWaypoints(60500, DEST_CARIBBEAN, dummyConverge);
+    assert("Cached result is same object", first === second);
+
+    // ---- Test 7: Fallback when _landFeatures is null ----
+    section("7. Fallback: null when _landFeatures is null");
+    var savedLand = window._landFeatures;
+    window._landFeatures = null;
+    _waypointCache = {};
+    var fallback = computeDynamicWaypoints(60500, DEST_CARIBBEAN, dummyConverge);
+    assert("Returns null without _landFeatures", fallback === null);
+    window._landFeatures = savedLand;
+
+    // ---- Test 8: Two adjacent stems have different paths ----
+    section("8. Adjacent stems (60500 + 60600) produce different waypoints");
+    _waypointCache = {};
+    var wps500 = computeDynamicWaypoints(60500, DEST_CARIBBEAN, dummyConverge);
+    _waypointCache = {};
+    var wps600 = computeDynamicWaypoints(60600, DEST_CARIBBEAN, dummyConverge);
+    var differ = false;
+    if (wps500 && wps600) {
+      if (wps500.length !== wps600.length) { differ = true; }
+      else {
+        for (var i = 0; i < wps500.length; i++) {
+          if (wps500[i].lat !== wps600[i].lat || wps500[i].lng !== wps600[i].lng) {
+            differ = true; break;
+          }
+        }
+      }
+    }
+    assert("60500 and 60600 paths differ for Caribbean", differ);
+
+    // ---- Summary ----
+    log("\n============================================");
+    log("Total: " + (passed + failed) + "  Passed: " + passed + "  Failed: " + failed);
+    if (failed === 0) log("ALL TESTS PASSED");
+    else log(failed + " TEST(S) FAILED");
+
+  }).catch(function(err) {
+    log("ERROR: Could not load world topology: " + err);
+  });
+})();
+</script>
+</body>
+</html>

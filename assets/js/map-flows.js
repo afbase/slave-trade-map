@@ -1,36 +1,87 @@
 // Render a single flow group (stems + trunk) for one dataset
-function renderFlowGroup(flows, destPt, dataset, zOffset) {
+function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
   if (flows.length === 0) return;
 
   var totalEmbarked = d3.sum(flows, function(d) { return d.total_embarked; });
   var maxEmbarked = d3.max(flows, function(d) { return d.total_embarked; });
   var strokeScale = d3.scaleSqrt().domain([0, maxEmbarked]).range([1.5, 14]);
 
-  // Compute convergence point
-  var cx = 0, cy = 0, totalWeight = 0;
+  // Compute convergence point — positioned mid-Atlantic
+  var westmostSourceX = Infinity;
+  var sourcePoints = [];
   flows.forEach(function(f) {
     var sc = getCoords(f.source_code);
     if (!sc) return;
     var pt = _projection([sc.lng, sc.lat]);
     if (!pt) return;
-    cx += pt[0] * f.total_embarked;
-    cy += pt[1] * f.total_embarked;
-    totalWeight += f.total_embarked;
+    sourcePoints.push({ pt: pt, code: f.source_code, weight: f.total_embarked });
+    if (pt[0] < westmostSourceX) westmostSourceX = pt[0];
   });
-  if (totalWeight === 0) return;
-  cx /= totalWeight;
-  cy /= totalWeight;
+  if (sourcePoints.length === 0) return;
 
-  // Shift convergence toward destination
-  var convergePt = [(cx + destPt[0]) / 2, (cy + destPt[1]) / 2];
+  var convergeX = (westmostSourceX + destPt[0]) / 2;
+
+  var destQuadrant = typeof classifyDestQuadrant === 'function'
+    ? classifyDestQuadrant(destCode) : "mid-atlantic";
+  var refLat = { "caribbean": 8, "north-america": 25, "brazil-north": -3,
+    "brazil-south": -12, "rio-plata": -20, "europe": 35 }[destQuadrant] || 5;
+  var refPt = _projection([0, refLat]);
+  var convergeY = refPt ? refPt[1] : destPt[1];
+
+  var convergePt = [convergeX, convergeY];
+
+  // Ensure convergence point is over ocean
+  if (window._landFeatures && _projection.invert) {
+    var geo = _projection.invert(convergePt);
+    if (geo) {
+      var onLand = false;
+      for (var li = 0; li < window._landFeatures.length; li++) {
+        if (d3.geoContains(window._landFeatures[li], geo)) { onLand = true; break; }
+      }
+      if (onLand) {
+        // Shift convergence eastward (toward mid-Atlantic) until off land
+        var safeGeo = [geo[0], geo[1]];
+        for (var shift = 5; shift <= 40; shift += 5) {
+          safeGeo[0] = geo[0] + shift;
+          var still = false;
+          for (var li2 = 0; li2 < window._landFeatures.length; li2++) {
+            if (d3.geoContains(window._landFeatures[li2], safeGeo)) { still = true; break; }
+          }
+          if (!still) break;
+        }
+        var safePt = _projection(safeGeo);
+        if (safePt) convergePt = [safePt[0], safePt[1]];
+      }
+    }
+  }
 
   // For combined mode, offset convergence slightly to separate trunk groups
   if (zOffset !== 0) {
     convergePt[1] += zOffset * 15;
   }
 
-  // Sort largest first
-  flows.sort(function(a, b) { return b.total_embarked - a.total_embarked; });
+  // Sort stems by source latitude (south→north), SE Africa always at bottom
+  flows.sort(function(a, b) {
+    var scA = getCoords(a.source_code);
+    var scB = getCoords(b.source_code);
+    var srcA = Math.floor(a.source_code / 100) * 100;
+    var srcB = Math.floor(b.source_code / 100) * 100;
+    if (srcA === 60800 && srcB !== 60800) return 1;
+    if (srcB === 60800 && srcA !== 60800) return -1;
+    return (scB ? scB.lat : 0) - (scA ? scA.lat : 0);
+  });
+
+  // Fréchet-based stem separation
+  if (typeof separateStems === 'function') {
+    var stemInfos = flows.map(function(f) {
+      var sc = getCoords(f.source_code);
+      if (!sc) return null;
+      var srcPt = _projection([sc.lng, sc.lat]);
+      if (!srcPt) return null;
+      return { sourceCode: f.source_code, srcPt: srcPt, destCode: destCode };
+    }).filter(Boolean);
+    separateStems(stemInfos, convergePt, destCode);
+  }
 
   var cs = getComputedStyle(document.documentElement);
   var trunkColor = dataset === "transatlantic"
@@ -49,7 +100,7 @@ function renderFlowGroup(flows, destPt, dataset, zOffset) {
     var pct = ((flow.total_embarked / totalEmbarked) * 100).toFixed(1);
     var dsLabel = dataset === "transatlantic" ? "Transatlantic" : "Inter-American";
 
-    var stemPath = generateArc(srcPt, convergePt);
+    var stemPath = generateRoutedPath(flow.source_code, srcPt, convergePt, destCode);
     if (!stemPath) return;
 
     var stemEl = _flowGroup
@@ -155,6 +206,10 @@ function renderFlows(flowsJson, destCode) {
   if (!_flowGroup) return;
   _flowGroup.selectAll("*").remove();
 
+  if (typeof _waypointCache !== 'undefined') {
+    for (var k in _waypointCache) delete _waypointCache[k];
+  }
+
   var flows;
   try {
     flows = JSON.parse(flowsJson);
@@ -183,10 +238,10 @@ function renderFlows(flowsJson, destCode) {
 
   // Render transatlantic first (behind), then inter-American (in front)
   if (taFlows.length > 0) {
-    renderFlowGroup(taFlows, destPt, "transatlantic", hasBoth ? -1 : 0);
+    renderFlowGroup(taFlows, destPt, "transatlantic", hasBoth ? -1 : 0, destCode);
   }
   if (iamFlows.length > 0) {
-    renderFlowGroup(iamFlows, destPt, "interamerican", hasBoth ? 1 : 0);
+    renderFlowGroup(iamFlows, destPt, "interamerican", hasBoth ? 1 : 0, destCode);
   }
 
   // Highlight the destination dot

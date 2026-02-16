@@ -89,3 +89,7 @@
 .flow-path:hover {
   filter: brightness(1.2);
 }
+
+.label-hidden {
+  display: none;
+}

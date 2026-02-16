@@ -35,7 +35,7 @@ const CSS_UTILITY: Asset = asset!("/assets/css/utility.css");
 fn main() {
     dioxus_logger::init(dioxus_logger::tracing::Level::INFO).expect("failed to init logger");
     dioxus::LaunchBuilder::new()
-        .with_cfg(dioxus::web::Config::new().rootname("slave-trade-map-root"))
+        .with_cfg(dioxus::web::Config::new().rootname("main"))
         .launch(App);
 }
 

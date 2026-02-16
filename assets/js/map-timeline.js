@@ -22,7 +22,7 @@ function renderTimeline(yearlyFlowsJson, globalMinYear, globalMaxYear) {
   var binSize = span > 100 ? 10 : span > 30 ? 5 : 1;
 
   // Fixed logical dimensions — CSS scales via viewBox
-  var margin = { top: 4, right: 8, bottom: 18, left: 8 };
+  var margin = { top: 4, right: 0, bottom: 18, left: 0 };
   var logicalW = 800;
   var logicalH = 60;
   var innerW = logicalW - margin.left - margin.right;

@@ -86,3 +86,27 @@
   color: var(--color-text-light);
   line-height: 1.6;
 }
+
+.data-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.data-table th.sortable:hover {
+  color: var(--color-accent);
+}
+
+.sort-arrow {
+  font-size: 9px;
+  color: var(--color-text-disabled);
+  margin-left: 2px;
+}
+
+.sort-arrow.active {
+  color: var(--color-text-dark);
+}
+
+.accordion-search {
+  padding: 6px 0 4px;
+}

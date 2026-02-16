@@ -5,6 +5,7 @@ var WORLD_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
 
 var _svg, _projection, _path, _flowGroup, _dotsGroup, _tooltipDiv, _width, _height;
 var _masterGroup, _uiGroup, _zoom;
+var _labelVisTimeout;
 window.mapReady = false;
 
 function initMap() {
@@ -90,6 +91,7 @@ function initMap() {
   d3.json(WORLD_URL)
     .then(function(world) {
       var countries = topojson.feature(world, world.objects.countries);
+      window._landFeatures = countries.features;
 
       landGroup
         .selectAll("path")
@@ -135,18 +137,18 @@ function initMap() {
 
   // Zoom behavior
   _zoom = d3.zoom()
-    .scaleExtent([1, 12])
+    .scaleExtent([1, 20])
     .on("zoom", function(event) {
       _masterGroup.attr("transform", event.transform);
       var k = event.transform.k;
       var sk = Math.sqrt(k);
       _masterGroup.selectAll(".dest-label")
-        .style("font-size", (9 / sk) + "px");
+        .style("font-size", Math.max(6, 9 / sk) + "px");
       _masterGroup.selectAll(".ocean-label")
-        .style("font-size", (18 / sk) + "px");
+        .style("font-size", Math.max(8, 18 / sk) + "px");
       _masterGroup.selectAll(".continent-label")
-        .style("font-size", (12 / sk) + "px")
-        .style("letter-spacing", (4 / sk) + "px");
+        .style("font-size", Math.max(7, 12 / sk) + "px")
+        .style("letter-spacing", Math.max(2, 4 / sk) + "px");
       _masterGroup.selectAll(".dest-dot")
         .each(function() {
           var baseR = +this.getAttribute("data-base-r") || 3.5;
@@ -164,7 +166,7 @@ function initMap() {
           var el = d3.select(this);
           var tx = +el.attr("data-tip-x");
           var ty = +el.attr("data-tip-y");
-          var s = 1 / sk;
+          var s = Math.min(1 / sk, 0.6);
           el.attr("transform",
             "translate(" + tx + "," + ty + ") scale(" + s + ") translate(" + (-tx) + "," + (-ty) + ")");
         });
@@ -172,6 +174,8 @@ function initMap() {
         .attr("stroke-width", 0.4 / k);
       _masterGroup.selectAll(".graticule")
         .attr("stroke-width", 0.3 / k);
+      if (_labelVisTimeout) clearTimeout(_labelVisTimeout);
+      _labelVisTimeout = setTimeout(function() { recomputeLabelVisibility(k); }, 150);
     });
 
   _svg.call(_zoom);
@@ -187,4 +191,49 @@ function resetZoom() {
   if (_svg && _zoom) {
     _svg.transition().duration(500).call(_zoom.transform, d3.zoomIdentity);
   }
+}
+
+function recomputeLabelVisibility(k) {
+  if (!_masterGroup) return;
+  var sk = Math.sqrt(k);
+  var charWidth = 5.5 / sk;
+  var labels = [];
+  _masterGroup.selectAll(".dest-label").each(function() {
+    var el = d3.select(this);
+    labels.push({
+      el: el,
+      importance: +(el.attr("data-importance") || 0),
+      x: +el.attr("x"),
+      y: +el.attr("y"),
+      anchor: el.attr("text-anchor"),
+      text: el.text(),
+      fontSize: parseFloat(el.style("font-size")) || (9 / sk)
+    });
+  });
+  labels.sort(function(a, b) { return b.importance - a.importance; });
+
+  var placedBoxes = [];
+  function overlaps(box) {
+    for (var i = 0; i < placedBoxes.length; i++) {
+      var b = placedBoxes[i];
+      if (box.x < b.x + b.w && box.x + box.w > b.x &&
+          box.y < b.y + b.h && box.y + box.h > b.y) return true;
+    }
+    return false;
+  }
+
+  labels.forEach(function(lbl) {
+    var textW = lbl.text.length * charWidth;
+    var textH = lbl.fontSize;
+    var bx = lbl.anchor === "end" ? lbl.x - textW : lbl.x;
+    var by = lbl.y - textH;
+    var box = { x: bx, y: by, w: textW, h: textH };
+
+    if (overlaps(box)) {
+      lbl.el.classed("label-hidden", true);
+    } else {
+      lbl.el.classed("label-hidden", false);
+      placedBoxes.push(box);
+    }
+  });
 }

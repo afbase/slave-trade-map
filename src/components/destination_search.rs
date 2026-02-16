@@ -1,5 +1,6 @@
 //! Destination search input with fuzzy-match and browse dropdown.
 
+use crate::components::FuzzySearchInput;
 use crate::state::AppState;
 use crate::utils::fuzzy_score;
 use dioxus::prelude::*;
@@ -10,18 +11,7 @@ pub fn DestinationSearch() -> Element {
 
     rsx! {
         div { class: "search-container",
-            // Decorative magnifying glass
-            i { class: "fa-sharp-duotone fa-light fa-magnifying-glass search-icon" }
-            input {
-                class: "search-input",
-                r#type: "text",
-                placeholder: if (state.mode)() == "regions" { "Search destination region..." } else { "Search destination port..." },
-                value: "{state.search_query}",
-                oninput: move |e| {
-                    state.search_query.set(e.value());
-                    state.browse_open.set(false);
-                    state.search_open.set(true);
-                },
+            div {
                 onfocusin: move |_| {
                     state.browse_open.set(false);
                     state.search_open.set(true);
@@ -29,6 +19,19 @@ pub fn DestinationSearch() -> Element {
                 onfocusout: move |_| {
                     state.search_open.set(false);
                 },
+                FuzzySearchInput {
+                    value: (state.search_query)(),
+                    placeholder: if (state.mode)() == "regions" { "Search destination region...".to_string() } else { "Search destination port...".to_string() },
+                    on_change: move |val: String| {
+                        state.search_query.set(val);
+                        state.browse_open.set(false);
+                        state.search_open.set(true);
+                    },
+                    on_clear: move |_| {
+                        state.search_query.set(String::new());
+                    },
+                    show_magnifier: true,
+                }
             }
             // List icon -- click toggles full destination browse list
             i {

@@ -23,6 +23,91 @@ function generateArc(source, target) {
   return "M " + source[0] + "," + source[1] + " Q " + cxp + "," + cyp + " " + target[0] + "," + target[1];
 }
 
+function generateMultiSegmentPath(points) {
+  if (!points || points.length < 2) return null;
+  if (points.length === 2) return generateArc(points[0], points[1]);
+
+  // Guard 1: Proximity filter — remove consecutive points closer than 15px
+  var MIN_SEGMENT_PX = 15;
+  var filtered = [points[0]];
+  for (var f = 1; f < points.length; f++) {
+    var prev = filtered[filtered.length - 1];
+    var cur = points[f];
+    var fdist = Math.sqrt((cur[0]-prev[0])**2 + (cur[1]-prev[1])**2);
+    if (fdist >= MIN_SEGMENT_PX || f === points.length - 1) {
+      filtered.push(cur);
+    }
+  }
+  points = filtered;
+  if (points.length < 2) return null;
+  if (points.length === 2) return generateArc(points[0], points[1]);
+
+  // Guard 2: X-monotonicity check — drop penultimate point if last segments backtrack
+  if (points.length >= 3) {
+    var last = points[points.length - 1];
+    var penult = points[points.length - 2];
+    var ante = points[points.length - 3];
+    var dirAP = penult[0] - ante[0];
+    var dirPL = last[0] - penult[0];
+    if ((dirAP > 0 && dirPL < -5) || (dirAP < 0 && dirPL > 5)) {
+      points.splice(points.length - 2, 1);
+    }
+  }
+  if (points.length < 2) return null;
+  if (points.length === 2) return generateArc(points[0], points[1]);
+
+  // Catmull-Rom to cubic Bezier conversion for smooth path through all points
+  var n = points.length;
+  var d = "M " + points[0][0] + "," + points[0][1];
+
+  for (var i = 0; i < n - 1; i++) {
+    var p0 = points[Math.max(0, i - 1)];
+    var p1 = points[i];
+    var p2 = points[i + 1];
+    var p3 = points[Math.min(n - 1, i + 2)];
+
+    // Catmull-Rom to cubic Bezier control points (alpha = 0.5)
+    var cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+    var cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+    var cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+    var cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+
+    d += " C " + cp1x + "," + cp1y + " " + cp2x + "," + cp2y + " " + p2[0] + "," + p2[1];
+  }
+
+  return d;
+}
+
+function generateRoutedPath(sourceCode, srcPt, convergePt, destCode) {
+  // Try dynamic waypoints first (if route-planner.js is loaded)
+  if (typeof computeDynamicWaypoints === 'function' && destCode) {
+    var dynamicWps = computeDynamicWaypoints(sourceCode, destCode, convergePt);
+    if (dynamicWps) {
+      var allPoints = [srcPt];
+      for (var i = 0; i < dynamicWps.length; i++) {
+        var projected = _projection([dynamicWps[i].lng, dynamicWps[i].lat]);
+        if (projected) allPoints.push(projected);
+      }
+      allPoints.push(convergePt);
+      return generateMultiSegmentPath(allPoints);
+    }
+  }
+  // Fallback to static waypoints
+  var waypoints = routeWaypoints[sourceCode];
+  if (waypoints) {
+    var allPoints = [srcPt];
+    for (var i = 0; i < waypoints.length; i++) {
+      var projected = _projection([waypoints[i].lng, waypoints[i].lat]);
+      if (projected) {
+        allPoints.push(projected);
+      }
+    }
+    allPoints.push(convergePt);
+    return generateMultiSegmentPath(allPoints);
+  }
+  return generateArc(srcPt, convergePt);
+}
+
 function drawArrowhead(group, arcPath, strokeWidth, color) {
   var tempPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
   tempPath.setAttribute("d", arcPath);

@@ -14,6 +14,9 @@ function renderDestinations(destinationsJson, mode) {
   var currentK = _svg ? d3.zoomTransform(_svg.node()).k : 1;
   var currentSK = Math.sqrt(currentK);
 
+  var labelData = [];
+
+  // Pass 1: render dots, collect label metadata
   destinations.forEach(function(dest) {
     var coords = getCoords(dest.code);
     if (!coords) return;
@@ -46,14 +49,15 @@ function renderDestinations(destinationsJson, mode) {
       anchor = "start";
     }
 
-    _dotsGroup
-      .append("text")
-      .attr("class", "dest-label")
-      .attr("x", x + labelDx)
-      .attr("y", y + 3 / currentSK)
-      .attr("text-anchor", anchor)
-      .style("font-size", (9 / currentSK) + "px")
-      .text(dest.name);
+    labelData.push({
+      x: x + labelDx,
+      y: y + 3 / currentSK,
+      anchor: anchor,
+      fontSize: 9 / currentSK,
+      text: dest.name,
+      importance: dest.total_embarked,
+      code: dest.code
+    });
 
     dot.on("click", function() {
       var el = document.getElementById("dest-click-receiver");
@@ -88,5 +92,45 @@ function renderDestinations(destinationsJson, mode) {
       .on("mouseout", function() {
         _tooltipDiv.style.opacity = "0";
       });
+  });
+
+  // Pass 2: render labels with collision detection, most important first
+  labelData.sort(function(a, b) { return b.importance - a.importance; });
+
+  var placedBoxes = [];
+  var charWidth = 5.5 / currentSK;
+
+  function overlaps(box) {
+    for (var i = 0; i < placedBoxes.length; i++) {
+      var b = placedBoxes[i];
+      if (box.x < b.x + b.w && box.x + box.w > b.x &&
+          box.y < b.y + b.h && box.y + box.h > b.y) return true;
+    }
+    return false;
+  }
+
+  labelData.forEach(function(lbl) {
+    var textW = lbl.text.length * charWidth;
+    var textH = lbl.fontSize;
+    var bx = lbl.anchor === "end" ? lbl.x - textW : lbl.x;
+    var by = lbl.y - textH;
+    var box = { x: bx, y: by, w: textW, h: textH };
+
+    var hidden = overlaps(box);
+
+    _dotsGroup
+      .append("text")
+      .attr("class", "dest-label" + (hidden ? " label-hidden" : ""))
+      .attr("x", lbl.x)
+      .attr("y", lbl.y)
+      .attr("text-anchor", lbl.anchor)
+      .attr("data-importance", lbl.importance)
+      .attr("data-code", lbl.code)
+      .style("font-size", lbl.fontSize + "px")
+      .text(lbl.text);
+
+    if (!hidden) {
+      placedBoxes.push(box);
+    }
   });
 }

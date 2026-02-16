@@ -8,6 +8,7 @@ use crate::models::{DatasetMode, DestinationInfo, FlowData, YearlySourceFlow};
 
 static COORDS_JS: &str = include_str!("../assets/js/coords.js");
 static COLORS_JS: &str = include_str!("../assets/js/colors.js");
+static ROUTE_PLANNER_JS: &str = include_str!("../assets/js/route-planner.js");
 static MAP_HELPERS_JS: &str = include_str!("../assets/js/map-helpers.js");
 static MAP_CORE_JS: &str = include_str!("../assets/js/map-core.js");
 static MAP_DESTINATIONS_JS: &str = include_str!("../assets/js/map-destinations.js");
@@ -29,6 +30,7 @@ pub fn load_map_scripts() {
     let all_js = [
         COORDS_JS,
         COLORS_JS,
+        ROUTE_PLANNER_JS,
         MAP_HELPERS_JS,
         MAP_CORE_JS,
         MAP_DESTINATIONS_JS,

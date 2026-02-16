@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stem Intersection Tests</title>
+<style>
+  body { font-family: monospace; margin: 20px; background: #1a1a2e; color: #e0e0e0; }
+  .pass { color: #4caf50; }
+  .fail { color: #f44336; }
+  .section { margin: 12px 0 4px; font-weight: bold; color: #82b1ff; }
+  #results { white-space: pre-wrap; }
+  .summary { margin-top: 16px; padding: 8px; border-top: 1px solid #555; font-size: 14px; }
+</style>
+</head>
+<body>
+<h2>Stem Intersection &amp; Convergence Ocean Tests</h2>
+<svg id="scratch" width="0" height="0" style="position:absolute;visibility:hidden"></svg>
+<div id="results"></div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<script src="../assets/js/coords.js"></script>
+<script src="../assets/js/route-planner.js"></script>
+<script src="../assets/js/map-helpers.js"></script>
+<script>
+(function() {
+  var out = document.getElementById("results");
+  var passed = 0, failed = 0;
+
+  function log(msg) { out.textContent += msg + "\n"; }
+  function section(name) { log("\n--- " + name + " ---"); }
+  function assert(name, condition) {
+    if (condition) { passed++; log("  PASS: " + name); }
+    else { failed++; log("  FAIL: " + name); }
+  }
+
+  // --- Geometry helpers ---
+
+  function ccw(A, B, C) {
+    return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+  }
+
+  function segmentsCross(p1, p2, p3, p4) {
+    return ccw(p1, p3, p4) !== ccw(p2, p3, p4) && ccw(p1, p2, p3) !== ccw(p1, p2, p4);
+  }
+
+  function dist(a, b) {
+    return Math.sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
+  }
+
+  function sampleSVGPath(pathD, numSamples) {
+    var svgEl = document.getElementById("scratch");
+    var el = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    el.setAttribute("d", pathD);
+    svgEl.appendChild(el);
+    var len = el.getTotalLength();
+    var pts = [];
+    for (var i = 0; i <= numSamples; i++) {
+      var p = el.getPointAtLength(len * i / numSamples);
+      pts.push({ x: p.x, y: p.y });
+    }
+    el.remove();
+    return pts;
+  }
+
+  function polylinesIntersect(samplesA, samplesB, exclusionPts, radius) {
+    var crossings = [];
+    for (var i = 0; i < samplesA.length - 1; i++) {
+      for (var j = 0; j < samplesB.length - 1; j++) {
+        if (segmentsCross(samplesA[i], samplesA[i+1], samplesB[j], samplesB[j+1])) {
+          // Approximate crossing point as midpoint of the two segment midpoints
+          var cx = (samplesA[i].x + samplesA[i+1].x + samplesB[j].x + samplesB[j+1].x) / 4;
+          var cy = (samplesA[i].y + samplesA[i+1].y + samplesB[j].y + samplesB[j+1].y) / 4;
+          var crossPt = { x: cx, y: cy };
+
+          // Check exclusion zones
+          var excluded = false;
+          for (var e = 0; e < exclusionPts.length; e++) {
+            if (dist(crossPt, exclusionPts[e]) < radius) {
+              excluded = true;
+              break;
+            }
+          }
+          if (!excluded) {
+            crossings.push(crossPt);
+          }
+        }
+      }
+    }
+    return { intersects: crossings.length > 0, crossings: crossings };
+  }
+
+  // --- Fréchet coupling helpers ---
+
+  function discreteFrechetWithCoupling(P, Q) {
+    var n = P.length, m = Q.length;
+    if (n === 0 || m === 0) return { distance: Infinity, coupling: [] };
+    var dp = [];
+    for (var i = 0; i < n; i++) {
+      dp[i] = new Float64Array(m);
+      for (var j = 0; j < m; j++) {
+        var d = Math.sqrt((P[i].x-Q[j].x)**2 + (P[i].y-Q[j].y)**2);
+        if (i === 0 && j === 0) dp[i][j] = d;
+        else if (i === 0) dp[i][j] = Math.max(dp[0][j-1], d);
+        else if (j === 0) dp[i][j] = Math.max(dp[i-1][0], d);
+        else dp[i][j] = Math.max(Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]), d);
+      }
+    }
+    var coupling = [];
+    var i = n - 1, j = m - 1;
+    coupling.push([i, j]);
+    while (i > 0 || j > 0) {
+      if (i === 0) { j--; }
+      else if (j === 0) { i--; }
+      else {
+        var candidates = [
+          [i-1, j-1, dp[i-1][j-1]],
+          [i-1, j, dp[i-1][j]],
+          [i, j-1, dp[i][j-1]]
+        ];
+        candidates.sort(function(a, b) { return a[2] - b[2]; });
+        i = candidates[0][0];
+        j = candidates[0][1];
+      }
+      coupling.push([i, j]);
+    }
+    coupling.reverse();
+    return { distance: dp[n-1][m-1], coupling: coupling };
+  }
+
+  function couplingLinesCross(samplesA, samplesB, coupling, convergePt, radius) {
+    var crossCount = 0;
+    var firstCross = null;
+    for (var k = 0; k < coupling.length - 1; k++) {
+      var ai = coupling[k][0], bi = coupling[k][1];
+      var aj = coupling[k+1][0], bj = coupling[k+1][1];
+      var pA1 = samplesA[ai], pA2 = samplesB[bi];
+      var pB1 = samplesA[aj], pB2 = samplesB[bj];
+      if (ai === aj && bi === bj) continue;
+      if (convergePt) {
+        var cp = { x: convergePt[0], y: convergePt[1] };
+        if (dist(pA1, cp) < radius && dist(pA2, cp) < radius &&
+            dist(pB1, cp) < radius && dist(pB2, cp) < radius) continue;
+      }
+      if (segmentsCross(pA1, pA2, pB1, pB2)) {
+        crossCount++;
+        if (!firstCross) firstCross = { k: k, ai: ai, bi: bi };
+      }
+    }
+    return { crossed: crossCount > 0, count: crossCount, first: firstCross };
+  }
+
+  // --- Convergence point computation (mirrors renderFlowGroup in map-flows.js) ---
+
+  function computeConvergePt(projection, destCode) {
+    var dc = regionCoords[destCode];
+    if (!dc) return null;
+    var destPt = projection([dc.lng, dc.lat]);
+    if (!destPt) return null;
+
+    var SOURCES = [60100, 60200, 60300, 60400, 60500, 60600, 60700, 60800, 60900];
+    var westmostSourceX = Infinity;
+    SOURCES.forEach(function(src) {
+      var sc = getCoords(src);
+      if (!sc) return;
+      var pt = projection([sc.lng, sc.lat]);
+      if (pt && pt[0] < westmostSourceX) westmostSourceX = pt[0];
+    });
+
+    var convergeX = (westmostSourceX + destPt[0]) / 2;
+
+    var destQuadrant = classifyDestQuadrant(destCode);
+    var refLat = { "caribbean": 8, "north-america": 25, "brazil-north": -3,
+      "brazil-south": -12, "rio-plata": -20, "europe": 35 }[destQuadrant] || 5;
+    var refPt = projection([0, refLat]);
+    var convergeY = refPt ? refPt[1] : destPt[1];
+
+    var convergePt = [convergeX, convergeY];
+
+    // Ocean guard (mirrors map-flows.js)
+    if (window._landFeatures && projection.invert) {
+      var geo = projection.invert(convergePt);
+      if (geo) {
+        var onLand = false;
+        for (var li = 0; li < window._landFeatures.length; li++) {
+          if (d3.geoContains(window._landFeatures[li], geo)) { onLand = true; break; }
+        }
+        if (onLand) {
+          var safeGeo = [geo[0], geo[1]];
+          for (var shift = 5; shift <= 40; shift += 5) {
+            safeGeo[0] = geo[0] + shift;
+            var still = false;
+            for (var li2 = 0; li2 < window._landFeatures.length; li2++) {
+              if (d3.geoContains(window._landFeatures[li2], safeGeo)) { still = true; break; }
+            }
+            if (!still) break;
+          }
+          var safePt = projection(safeGeo);
+          if (safePt) convergePt = [safePt[0], safePt[1]];
+        }
+      }
+    }
+
+    return convergePt;
+  }
+
+  // --- Main test runner ---
+
+  var WORLD_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+  var SOURCES = [60100, 60200, 60300, 60400, 60500, 60600, 60700, 60800, 60900];
+  var NUM_SAMPLES = 50;
+  var EXCLUSION_RADIUS = 15;
+
+  var DESTINATIONS = [
+    // Caribbean (core island destinations)
+    { code: 35100, name: "Jamaica",           quadrant: "caribbean" },
+    { code: 36400, name: "Saint-Domingue",    quadrant: "caribbean" },
+    { code: 31312, name: "Havana",            quadrant: "caribbean" },
+    { code: 34200, name: "Barbados",          quadrant: "caribbean" },
+    { code: 36100, name: "Martinique",        quadrant: "caribbean" },
+    { code: 36200, name: "Guadeloupe",        quadrant: "caribbean" },
+    { code: 33400, name: "Antigua",           quadrant: "caribbean" },
+    { code: 34500, name: "Trinidad",          quadrant: "caribbean" },
+    { code: 37010, name: "St. Croix",         quadrant: "caribbean" },
+    { code: 32110, name: "Curacao",           quadrant: "caribbean" },
+    { code: 34400, name: "Grenada",           quadrant: "caribbean" },
+    // Caribbean (Spanish mainland coast)
+    { code: 41203, name: "Veracruz",          quadrant: "caribbean" },
+    { code: 41207, name: "Cartagena",         quadrant: "caribbean" },
+    { code: 41210, name: "Venezuela",         quadrant: "caribbean" },
+    // North America (lat > 25)
+    { code: 21300, name: "Charleston",        quadrant: "north-america" },
+    { code: 21601, name: "New Orleans",       quadrant: "north-america" },
+    { code: 20100, name: "Rhode Island",      quadrant: "north-america" },
+    { code: 20400, name: "Massachusetts",     quadrant: "north-america" },
+    { code: 21400, name: "Georgia",           quadrant: "north-america" },
+    { code: 21100, name: "Virginia",          quadrant: "north-america" },
+    // Brazil North
+    { code: 50300, name: "Pernambuco",        quadrant: "brazil-north" },
+    { code: 50100, name: "Amazonia",          quadrant: "brazil-north" },
+    { code: 36300, name: "French Guiana",     quadrant: "brazil-north" },
+    { code: 50102, name: "Maranhao",          quadrant: "brazil-north" },
+    // Brazil South
+    { code: 50200, name: "Bahia",             quadrant: "brazil-south" },
+    { code: 50422, name: "Rio de Janeiro",    quadrant: "brazil-south" },
+    { code: 50500, name: "Other Brazil",      quadrant: "brazil-south" },
+    { code: 50428, name: "Santos",            quadrant: "brazil-south" },
+    // Rio de la Plata
+    { code: 42001, name: "Buenos Aires",      quadrant: "rio-plata" },
+    { code: 42002, name: "Montevideo",        quadrant: "rio-plata" },
+    // Europe
+    { code: 10203, name: "Lisbon",            quadrant: "europe" },
+    { code: 10404, name: "Bristol",           quadrant: "europe" },
+    { code: 10432, name: "Liverpool",         quadrant: "europe" },
+    { code: 10720, name: "Nantes",            quadrant: "europe" },
+    { code: 10703, name: "Bordeaux",          quadrant: "europe" },
+    { code: 10810, name: "Amsterdam",         quadrant: "europe" },
+    { code: 10104, name: "Cadiz",             quadrant: "europe" },
+    { code: 10901, name: "Copenhagen",        quadrant: "europe" }
+  ];
+
+  d3.json(WORLD_URL).then(function(world) {
+    var countries = topojson.feature(world, world.objects.countries);
+    window._landFeatures = countries.features;
+
+    var projection = d3.geoNaturalEarth1().center([-15, 5]).scale(210).translate([600, 320]);
+    window._projection = projection;
+
+    // ---- Test A: Quadrant classification ----
+    section("A. Quadrant classification for test destinations");
+    DESTINATIONS.forEach(function(d) {
+      var q = classifyDestQuadrant(d.code);
+      assert(d.name + " (" + d.code + ") => " + d.quadrant, q === d.quadrant);
+    });
+
+    // ---- Test B: Convergence point is over ocean ----
+    section("B. Convergence point is over ocean for all destinations");
+    DESTINATIONS.forEach(function(d) {
+      var convergePt = computeConvergePt(projection, d.code);
+      if (!convergePt) {
+        assert(d.name + " convergePt exists", false);
+        return;
+      }
+      var geo = projection.invert(convergePt);
+      var onLand = false;
+      if (geo) {
+        for (var li = 0; li < window._landFeatures.length; li++) {
+          if (d3.geoContains(window._landFeatures[li], geo)) { onLand = true; break; }
+        }
+      }
+      assert(d.name + " (" + d.code + ") convergePt over ocean", !onLand);
+    });
+
+    // ---- Test C: Stem intersection tests ----
+    section("C. No stem crossings (excluding convergence/source zones)");
+    DESTINATIONS.forEach(function(d) {
+      _waypointCache = {};
+      var convergePt = computeConvergePt(projection, d.code);
+      if (!convergePt) {
+        assert(d.name + " stems — convergePt exists", false);
+        return;
+      }
+
+      // Build SVG paths for each source stem
+      var stemPaths = [];
+      var sourcePts = [];
+      SOURCES.forEach(function(src) {
+        var sc = getCoords(src);
+        if (!sc) return;
+        var srcPt = projection([sc.lng, sc.lat]);
+        if (!srcPt) return;
+        sourcePts.push({ x: srcPt[0], y: srcPt[1] });
+
+        _waypointCache = {};
+        var wps = computeDynamicWaypoints(src, d.code, convergePt);
+        var allPoints = [srcPt];
+        if (wps) {
+          for (var w = 0; w < wps.length; w++) {
+            var pp = projection([wps[w].lng, wps[w].lat]);
+            if (pp) allPoints.push(pp);
+          }
+        }
+        allPoints.push(convergePt);
+
+        var pathD = generateMultiSegmentPath(allPoints);
+        if (pathD) {
+          stemPaths.push({ src: src, pathD: pathD });
+        }
+      });
+
+      // Sample all paths
+      var stemSamples = stemPaths.map(function(sp) {
+        return { src: sp.src, samples: sampleSVGPath(sp.pathD, NUM_SAMPLES) };
+      });
+
+      // Build exclusion points: convergePt + all source points
+      var exclusionPts = [{ x: convergePt[0], y: convergePt[1] }].concat(sourcePts);
+
+      // Check all pairs
+      var crossingFound = false;
+      var crossingDetail = "";
+      for (var i = 0; i < stemSamples.length && !crossingFound; i++) {
+        for (var j = i + 1; j < stemSamples.length && !crossingFound; j++) {
+          var result = polylinesIntersect(
+            stemSamples[i].samples, stemSamples[j].samples,
+            exclusionPts, EXCLUSION_RADIUS
+          );
+          if (result.intersects) {
+            crossingFound = true;
+            crossingDetail = " (" + stemSamples[i].src + " x " + stemSamples[j].src +
+              " at " + Math.round(result.crossings[0].x) + "," + Math.round(result.crossings[0].y) + ")";
+          }
+        }
+      }
+      assert(d.name + " (" + d.code + ") no stem crossings" + crossingDetail, !crossingFound);
+    });
+
+    // ---- Test D: Adjacent stem coupling lines do not cross (parallel behavior) ----
+    var COUPLING_SAMPLES = 100;
+    var COUPLING_EXCLUSION = 20;
+    section("D. Adjacent stem coupling lines do not cross (parallel behavior)");
+    DESTINATIONS.forEach(function(d) {
+      _waypointCache = {};
+      var convergePt = computeConvergePt(projection, d.code);
+      if (!convergePt) {
+        assert(d.name + " coupling — convergePt exists", false);
+        return;
+      }
+
+      // Build stem paths with source info for sorting
+      var stemData = [];
+      SOURCES.forEach(function(src) {
+        var sc = getCoords(src);
+        if (!sc) return;
+        var srcPt = projection([sc.lng, sc.lat]);
+        if (!srcPt) return;
+
+        _waypointCache = {};
+        var wps = computeDynamicWaypoints(src, d.code, convergePt);
+        var allPoints = [srcPt];
+        if (wps) {
+          for (var w = 0; w < wps.length; w++) {
+            var pp = projection([wps[w].lng, wps[w].lat]);
+            if (pp) allPoints.push(pp);
+          }
+        }
+        allPoints.push(convergePt);
+
+        var pathD = generateMultiSegmentPath(allPoints);
+        if (pathD) {
+          stemData.push({ src: src, lat: sc.lat, pathD: pathD });
+        }
+      });
+
+      // Sort by source latitude (south→north), SE Africa (60800) pinned to bottom
+      stemData.sort(function(a, b) {
+        var srcA = Math.floor(a.src / 100) * 100;
+        var srcB = Math.floor(b.src / 100) * 100;
+        if (srcA === 60800 && srcB !== 60800) return 1;
+        if (srcB === 60800 && srcA !== 60800) return -1;
+        return b.lat - a.lat;
+      });
+
+      // Sample paths at higher resolution for coupling
+      var stemSamplesD = stemData.map(function(sd) {
+        return { src: sd.src, samples: sampleSVGPath(sd.pathD, COUPLING_SAMPLES) };
+      });
+
+      // Check consecutive pairs
+      for (var i = 0; i < stemSamplesD.length - 1; i++) {
+        var sA = stemSamplesD[i], sB = stemSamplesD[i + 1];
+        var result = discreteFrechetWithCoupling(sA.samples, sB.samples);
+        var check = couplingLinesCross(sA.samples, sB.samples, result.coupling, convergePt, COUPLING_EXCLUSION);
+        var detail = "";
+        if (check.crossed) {
+          detail = " (coupling idx " + check.first.k + ", " + check.count + " crossings)";
+        }
+        assert(d.name + " " + sA.src + "↔" + sB.src + " coupling ok" + detail, !check.crossed);
+      }
+    });
+
+    // ---- Summary ----
+    log("\n============================================");
+    log("Total: " + (passed + failed) + "  Passed: " + passed + "  Failed: " + failed);
+    if (failed === 0) log("ALL TESTS PASSED");
+    else log(failed + " TEST(S) FAILED");
+
+  }).catch(function(err) {
+    log("ERROR: Could not load world topology: " + err);
+  });
+})();
+</script>
+</body>
+</html>

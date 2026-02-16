@@ -22,3 +22,10 @@ csv = "1.4.0"
 [features]
 default = ["web"]
 web = ["dioxus/web"]
+
+[profile.release]
+opt-level = 3
+overflow-checks = false
+incremental = true
+panic = "unwind"
+strip = "symbols"
