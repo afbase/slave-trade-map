@@ -19,16 +19,20 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
   });
   if (sourcePoints.length === 0) return;
 
-  var convergeX = (westmostSourceX + destPt[0]) / 2;
-
+  var convergePt;
   var destQuadrant = typeof classifyDestQuadrant === 'function'
     ? classifyDestQuadrant(destCode) : "mid-atlantic";
-  var refLat = { "caribbean": 8, "north-america": 25, "brazil-north": -3,
-    "brazil-south": -12, "rio-plata": -20, "europe": 35 }[destQuadrant] || 5;
-  var refPt = _projection([0, refLat]);
-  var convergeY = refPt ? refPt[1] : destPt[1];
 
-  var convergePt = [convergeX, convergeY];
+  if (dataset === "interamerican" && typeof computeIAmConvergence === 'function') {
+    convergePt = computeIAmConvergence(sourcePoints, destPt, destCode, destQuadrant);
+  } else {
+    var convergeX = (westmostSourceX + destPt[0]) / 2;
+    var refLat = { "caribbean": 8, "north-america": 25, "brazil-north": -3,
+      "brazil-south": -12, "rio-plata": -20, "pacific-south": -30, "europe": 35 }[destQuadrant] || 5;
+    var refPt = _projection([0, refLat]);
+    var convergeY = refPt ? refPt[1] : destPt[1];
+    convergePt = [convergeX, convergeY];
+  }
 
   // Ensure convergence point is over ocean
   if (window._landFeatures && _projection.invert) {
@@ -41,8 +45,9 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
       if (onLand) {
         // Shift convergence eastward (toward mid-Atlantic) until off land
         var safeGeo = [geo[0], geo[1]];
+        var shiftDir = (destQuadrant === "pacific-south") ? -1 : 1;
         for (var shift = 5; shift <= 40; shift += 5) {
-          safeGeo[0] = geo[0] + shift;
+          safeGeo[0] = geo[0] + shift * shiftDir;
           var still = false;
           for (var li2 = 0; li2 < window._landFeatures.length; li2++) {
             if (d3.geoContains(window._landFeatures[li2], safeGeo)) { still = true; break; }
@@ -184,7 +189,11 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
 
   // Draw trunk
   var trunkWidth = Math.min(strokeScale(totalEmbarked) * 0.8, 20);
-  var trunkPath = generateArc(convergePt, destPt);
+  var bias = null;
+  if (destQuadrant === "rio-plata" || destQuadrant === "pacific-south") {
+    bias = "south-atlantic";
+  }
+  var trunkPath = generateArc(convergePt, destPt, bias);
   if (trunkPath) {
     _flowGroup
       .append("path")

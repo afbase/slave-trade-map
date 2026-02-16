@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Inter-American Route Planner Tests</title>
+<style>
+  body { font-family: monospace; margin: 20px; background: #1a1a2e; color: #e0e0e0; }
+  .pass { color: #4caf50; }
+  .fail { color: #f44336; }
+  .section { margin: 12px 0 4px; font-weight: bold; color: #82b1ff; }
+  #results { white-space: pre-wrap; }
+  .summary { margin-top: 16px; padding: 8px; border-top: 1px solid #555; font-size: 14px; }
+</style>
+</head>
+<body>
+<h2>Inter-American Route Planner Tests</h2>
+<div id="results"></div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<script src="../assets/js/coords.js"></script>
+<script src="../assets/js/route-planner.js"></script>
+<script>
+(function() {
+  var out = document.getElementById("results");
+  var passed = 0, failed = 0;
+
+  function log(msg) { out.textContent += msg + "\n"; }
+  function section(name) { log("\n--- " + name + " ---"); }
+  function assert(name, condition) {
+    if (condition) { passed++; log("  PASS: " + name); }
+    else { failed++; log("  FAIL: " + name); }
+  }
+
+  var WORLD_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+
+  var BRAZIL_SOURCES = [50100, 50200, 50300, 50400, 50500];
+  var CARIBBEAN_SOURCES = [34200, 35100, 33500];
+
+  d3.json(WORLD_URL).then(function(world) {
+    var countries = topojson.feature(world, world.objects.countries);
+    window._landFeatures = countries.features;
+
+    // Set up projection for convergence tests
+    var projection = d3.geoNaturalEarth1().center([-15, 5]).scale(210).translate([600, 320]);
+    window._projection = projection;
+
+    var dummyConverge = [400, 300];
+
+    // ========================================================================
+    // Section: Waypoint Generation (tests 1-5)
+    // ========================================================================
+
+    // ---- Test 1: Brazilian sources -> Rio de la Plata: non-null waypoints ----
+    section("1. Brazilian sources -> Rio de la Plata (42000): non-null waypoints");
+    _waypointCache = {};
+    BRAZIL_SOURCES.forEach(function(src) {
+      _waypointCache = {};
+      var wps = computeDynamicWaypoints(src, 42000, dummyConverge);
+      assert(src + " -> 42000 non-null with length > 0", wps !== null && wps.length > 0);
+    });
+
+    // ---- Test 2: Brazilian sources -> Caribbean Havana: non-null waypoints ----
+    section("2. Brazilian sources -> Caribbean Havana (31312): non-null waypoints");
+    BRAZIL_SOURCES.forEach(function(src) {
+      _waypointCache = {};
+      var wps = computeDynamicWaypoints(src, 31312, dummyConverge);
+      assert(src + " -> 31312 non-null with length > 0", wps !== null && wps.length > 0);
+    });
+
+    // ---- Test 3: Caribbean sources -> Caribbean Tortola: null or valid ----
+    section("3. Caribbean sources -> Tortola (33200): null or valid");
+    CARIBBEAN_SOURCES.forEach(function(src) {
+      _waypointCache = {};
+      var wps = computeDynamicWaypoints(src, 33200, dummyConverge);
+      assert(src + " -> 33200 null (simple arc) or valid array", wps === null || (Array.isArray(wps) && wps.length > 0));
+    });
+
+    // ---- Test 4: North American source -> Caribbean Havana: null or valid ----
+    section("4. North America (21300) -> Havana (31312): null or valid");
+    _waypointCache = {};
+    var naWps = computeDynamicWaypoints(21300, 31312, dummyConverge);
+    assert("21300 -> 31312 null (simple arc) or valid array", naWps === null || (Array.isArray(naWps) && naWps.length > 0));
+
+    // ---- Test 5: Caribbean sources -> Rio de la Plata: non-null waypoints ----
+    section("5. Caribbean sources -> Rio de la Plata (42000): non-null waypoints");
+    [34200, 35100].forEach(function(src) {
+      _waypointCache = {};
+      var wps = computeDynamicWaypoints(src, 42000, dummyConverge);
+      assert(src + " -> 42000 non-null with length > 0", wps !== null && wps.length > 0);
+    });
+
+    // ========================================================================
+    // Section: Land Avoidance (tests 6-9)
+    // ========================================================================
+
+    // ---- Test 6: No waypoint on land for Brazilian sources -> Rio de la Plata ----
+    section("6. No waypoint on land: Brazilian sources -> Rio de la Plata");
+    [50100, 50200, 50300, 50400].forEach(function(src) {
+      _waypointCache = {};
+      var wps = computeDynamicWaypoints(src, 42000, dummyConverge);
+      if (!wps) { assert(src + " -> 42000 no land (null wps)", false); return; }
+      var onLand = false;
+      for (var w = 0; w < wps.length; w++) {
+        var pt = [wps[w].lng, wps[w].lat];
+        for (var f = 0; f < window._landFeatures.length; f++) {
+          if (d3.geoContains(window._landFeatures[f], pt)) {
+            onLand = true;
+            break;
+          }
+        }
+        if (onLand) break;
+      }
+      assert(src + " -> 42000 no waypoint on land", !onLand);
+    });
+
+    // ---- Test 7: No waypoint on land for Bahia -> Havana ----
+    section("7. No waypoint on land: Bahia (50200) -> Havana (31312)");
+    _waypointCache = {};
+    var bahiaHavana = computeDynamicWaypoints(50200, 31312, dummyConverge);
+    if (!bahiaHavana) {
+      assert("50200 -> 31312 no land (null wps)", false);
+    } else {
+      var onLand7 = false;
+      for (var w = 0; w < bahiaHavana.length; w++) {
+        var pt = [bahiaHavana[w].lng, bahiaHavana[w].lat];
+        for (var f = 0; f < window._landFeatures.length; f++) {
+          if (d3.geoContains(window._landFeatures[f], pt)) {
+            onLand7 = true;
+            break;
+          }
+        }
+        if (onLand7) break;
+      }
+      assert("50200 -> 31312 no waypoint on land", !onLand7);
+    }
+
+    // ---- Test 8: SE Brazil -> Rio de la Plata: all waypoints offshore (lng < -35) ----
+    section("8. SE Brazil (50400) -> Rio de la Plata: all waypoints offshore (lng < -35)");
+    _waypointCache = {};
+    var seBrazilRp = computeDynamicWaypoints(50400, 42000, dummyConverge);
+    if (!seBrazilRp) {
+      assert("50400 -> 42000 has waypoints", false);
+    } else {
+      var allOffshore = true;
+      for (var w = 0; w < seBrazilRp.length; w++) {
+        if (seBrazilRp[w].lng >= -35) { allOffshore = false; break; }
+      }
+      assert("50400 -> 42000 all waypoints have lng < -35", allOffshore);
+    }
+
+    // ---- Test 9: Pernambuco -> Rio de la Plata: includes Ponta do Seixas vicinity ----
+    section("9. Pernambuco (50300) -> Rio de la Plata: Ponta do Seixas vicinity waypoint");
+    _waypointCache = {};
+    var pernamRp = computeDynamicWaypoints(50300, 42000, dummyConverge);
+    if (!pernamRp) {
+      assert("50300 -> 42000 has waypoints", false);
+    } else {
+      var hasSeixas = false;
+      for (var w = 0; w < pernamRp.length; w++) {
+        if (pernamRp[w].lat >= -10 && pernamRp[w].lat <= -5 &&
+            pernamRp[w].lng >= -37 && pernamRp[w].lng <= -32) {
+          hasSeixas = true;
+          break;
+        }
+      }
+      assert("50300 -> 42000 has waypoint near Ponta do Seixas", hasSeixas);
+    }
+
+    // ========================================================================
+    // Section: Destination Quadrant Classification (tests 10-14)
+    // ========================================================================
+    section("10-14. Destination Quadrant Classification");
+
+    assert("classifyDestQuadrant(42001) === 'rio-plata' (Buenos Aires)",
+      classifyDestQuadrant(42001) === "rio-plata");
+    assert("classifyDestQuadrant(42002) === 'rio-plata' (Montevideo)",
+      classifyDestQuadrant(42002) === "rio-plata");
+    assert("classifyDestQuadrant(43001) === 'pacific-south' (Lima)",
+      classifyDestQuadrant(43001) === "pacific-south");
+    assert("classifyDestQuadrant(44002) === 'pacific-south' (Talcahuano)",
+      classifyDestQuadrant(44002) === "pacific-south");
+    assert("classifyDestQuadrant(31312) === 'caribbean' (Havana)",
+      classifyDestQuadrant(31312) === "caribbean");
+
+    // ========================================================================
+    // Section: Source Quadrant Classification (tests 15-18)
+    // ========================================================================
+    section("15-18. Source Quadrant Classification");
+
+    assert("classifySourceQuadrant(50200) === 'brazil-north' (Bahia)",
+      classifySourceQuadrant(50200) === "brazil-north");
+    assert("classifySourceQuadrant(50400) === 'brazil-south' (SE Brazil)",
+      classifySourceQuadrant(50400) === "brazil-south");
+    assert("classifySourceQuadrant(35100) === 'caribbean' (Jamaica)",
+      classifySourceQuadrant(35100) === "caribbean");
+    assert("classifySourceQuadrant(21300) === 'north-america' (South Carolina)",
+      classifySourceQuadrant(21300) === "north-america");
+
+    // ========================================================================
+    // Section: Convergence Point (tests 19-21)
+    // ========================================================================
+
+    // ---- Test 19: I-Am convergence for Caribbean -> Tortola ----
+    section("19. I-Am convergence: Caribbean -> Tortola");
+    var caribSources19 = [34200, 35100, 33500];
+    var sourcePoints19 = caribSources19.map(function(code) {
+      var c = regionCoords[code];
+      var pt = projection([c.lng, c.lat]);
+      return { pt: pt, weight: 1 };
+    });
+    var destCoord19 = regionCoords[33200];
+    var destPt19 = projection([destCoord19.lng, destCoord19.lat]);
+    var centroidX19 = d3.mean(sourcePoints19, function(s) { return s.pt[0]; });
+    var conv19 = computeIAmConvergence(sourcePoints19, destPt19, 33200, "caribbean");
+    assert("Convergence X between source centroid X and dest X",
+      (conv19[0] >= Math.min(centroidX19, destPt19[0]) && conv19[0] <= Math.max(centroidX19, destPt19[0])));
+
+    // ---- Test 20: I-Am convergence for pan-American -> Havana: not on land ----
+    section("20. I-Am convergence: pan-American -> Havana not on land");
+    var panAmSources20 = [50200, 50400, 35100, 21300, 34200];
+    var sourcePoints20 = panAmSources20.map(function(code) {
+      var c = regionCoords[code];
+      var pt = projection([c.lng, c.lat]);
+      return { pt: pt, weight: 1 };
+    });
+    var destCoord20 = regionCoords[31312];
+    var destPt20 = projection([destCoord20.lng, destCoord20.lat]);
+    var conv20 = computeIAmConvergence(sourcePoints20, destPt20, 31312, "caribbean");
+    var inverted20 = projection.invert(conv20);
+    var onLand20 = false;
+    if (inverted20) {
+      for (var f = 0; f < window._landFeatures.length; f++) {
+        if (d3.geoContains(window._landFeatures[f], inverted20)) {
+          onLand20 = true;
+          break;
+        }
+      }
+    }
+    assert("Pan-American -> Havana convergence not on land", !onLand20);
+
+    // ---- Test 21: I-Am convergence for Brazilian -> Rio de la Plata: off coast ----
+    section("21. I-Am convergence: Brazilian -> Rio de la Plata off coast (lng < -30)");
+    var brSources21 = [50100, 50200, 50300, 50400];
+    var sourcePoints21 = brSources21.map(function(code) {
+      var c = regionCoords[code];
+      var pt = projection([c.lng, c.lat]);
+      return { pt: pt, weight: 1 };
+    });
+    var destCoord21 = regionCoords[42000];
+    var destPt21 = projection([destCoord21.lng, destCoord21.lat]);
+    var conv21 = computeIAmConvergence(sourcePoints21, destPt21, 42000, "rio-plata");
+    var inverted21 = projection.invert(conv21);
+    assert("Brazilian -> Rio de la Plata convergence lng < -30",
+      inverted21 !== null && inverted21[0] < -30);
+
+    // ========================================================================
+    // Section: Port Resolution (tests 22-25)
+    // ========================================================================
+    section("22-25. Port Resolution");
+
+    var saoLuis = regionCoords[50109];
+    assert("regionCoords[50109] exists and name === 'São Luis'",
+      saoLuis !== null && saoLuis !== undefined && saoLuis.name === "São Luis");
+
+    var talcahuano = regionCoords[44002];
+    assert("regionCoords[44002] exists and name === 'Talcahuano'",
+      talcahuano !== null && talcahuano !== undefined && talcahuano.name === "Talcahuano");
+
+    var rescued = regionCoords[80713];
+    assert("regionCoords[80713] exists (Rescued at sea)",
+      rescued !== null && rescued !== undefined);
+
+    var chile = regionCoords[44000];
+    assert("regionCoords[44000].name === 'Chile'",
+      chile !== null && chile !== undefined && chile.name === "Chile");
+
+    // ========================================================================
+    // Section: Cache (test 26)
+    // ========================================================================
+    section("26. Cache: repeated call returns same object reference");
+    _waypointCache = {};
+    var first26 = computeDynamicWaypoints(50200, 42000, dummyConverge);
+    var second26 = computeDynamicWaypoints(50200, 42000, dummyConverge);
+    assert("Cached result is same object", first26 === second26);
+
+    // ========================================================================
+    // Section: Backward Compatibility (test 27)
+    // ========================================================================
+    section("27. Backward compat: African sources still produce non-null waypoints");
+    var africanSources = [60100, 60200, 60300, 60400, 60500, 60600, 60700, 60800, 60900];
+    var taDests = [35100, 50200, 21300];
+    var taDestNames = ["Caribbean (Jamaica)", "Brazil (Bahia)", "North America (Charleston)"];
+    africanSources.forEach(function(src) {
+      taDests.forEach(function(dest, di) {
+        _waypointCache = {};
+        var wps = computeDynamicWaypoints(src, dest, dummyConverge);
+        assert("TA " + src + " -> " + taDestNames[di] + " non-null", wps !== null && wps.length > 0);
+      });
+    });
+
+    // ---- Summary ----
+    log("\n============================================");
+    log("Total: " + (passed + failed) + "  Passed: " + passed + "  Failed: " + failed);
+    if (failed === 0) log("ALL TESTS PASSED");
+    else log(failed + " TEST(S) FAILED");
+
+  }).catch(function(err) {
+    log("ERROR: Could not load world topology: " + err);
+  });
+})();
+</script>
+</body>
+</html>

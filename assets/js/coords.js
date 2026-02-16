@@ -319,11 +319,17 @@ var regionCoords = {
   43000: { name: "Peru", lat: -12.0, lng: -77.0 },
   // Peru ports
   43001: { name: "Lima", lat: -12.05, lng: -77.04 },
-  44000: { name: "Tierra Firme", lat: 8.0, lng: -76.0 },
+  44000: { name: "Chile", lat: -33.4, lng: -70.6 },
+  44001: { name: "Valparaiso", lat: -33.05, lng: -71.62 },
+  44002: { name: "Talcahuano", lat: -36.72, lng: -73.12 },
+  45000: { name: "Ecuador", lat: -1.0, lng: -78.5 },
+  46000: { name: "Pacific Central America", lat: 9.0, lng: -79.5 },
+  46001: { name: "Panama City", lat: 8.97, lng: -79.53 },
   // Brazil
   50100: { name: "Amazonia", lat: -2, lng: -49 },
   // Amazonia ports
   50102: { name: "Maranhao", lat: -2.53, lng: -44.28 },
+  50109: { name: "São Luis", lat: -2.50, lng: -44.28 },
   50103: { name: "Para", lat: -1.46, lng: -48.50 },
   50200: { name: "Bahia", lat: -13, lng: -38.5 },
   // Bahia ports
@@ -362,6 +368,7 @@ var regionCoords = {
   80500: { name: "British Americas", lat: 30, lng: -78 },
   80600: { name: "India", lat: 20, lng: 78 },
   80700: { name: "Non-geographical", lat: 10, lng: -50 },
+  80713: { name: "Rescued at sea (shipwreck)", lat: 10, lng: -50 },
   // European
   10100: { name: "Spain", lat: 39.5, lng: -3.7 },
   10200: { name: "Portugal", lat: 39.4, lng: -8.2 },

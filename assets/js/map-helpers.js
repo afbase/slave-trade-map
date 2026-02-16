@@ -6,7 +6,7 @@ function getCoords(code) {
   return null;
 }
 
-function generateArc(source, target) {
+function generateArc(source, target, curveBias) {
   if (!source || !target) return null;
   var dx = target[0] - source[0];
   var dy = target[1] - source[1];
@@ -17,8 +17,15 @@ function generateArc(source, target) {
   var mx = (source[0] + target[0]) / 2;
   var my = (source[1] + target[1]) / 2;
   var angle = Math.atan2(dy, dx);
-  var cxp = mx - Math.sin(angle) * curveAmount;
-  var cyp = my + Math.cos(angle) * curveAmount * 0.3 - curveAmount * 0.4;
+
+  var cxp, cyp;
+  if (curveBias === "south-atlantic") {
+    cxp = mx + Math.sin(angle) * curveAmount;
+    cyp = my - Math.cos(angle) * curveAmount * 0.3;
+  } else {
+    cxp = mx - Math.sin(angle) * curveAmount;
+    cyp = my + Math.cos(angle) * curveAmount * 0.3 - curveAmount * 0.4;
+  }
 
   return "M " + source[0] + "," + source[1] + " Q " + cxp + "," + cyp + " " + target[0] + "," + target[1];
 }

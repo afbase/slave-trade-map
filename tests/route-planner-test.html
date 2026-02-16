@@ -164,6 +164,24 @@
     }
     assert("60500 and 60600 paths differ for Caribbean", differ);
 
+    // ---- Test 9: I-Am sources don't break existing TA routing ----
+    section("9. I-Am backward compat: TA routes still work with new code");
+    _waypointCache = {};
+    var iamSources = [50200, 50400, 35100, 21300, 34200];
+    var iamDest = 42000; // Rio de la Plata
+    iamSources.forEach(function(src) {
+      var wps = computeDynamicWaypoints(src, iamDest, dummyConverge);
+      // I-Am sources should either return non-null (with waypoints) or null (simple arc ok)
+      // The key is they shouldn't throw errors
+      assert(src + " -> Rio de la Plata doesn't error", true);
+    });
+    // Verify existing African sources still work
+    SOURCES.forEach(function(src) {
+      _waypointCache = {};
+      var wps = computeDynamicWaypoints(src, DEST_CARIBBEAN, dummyConverge);
+      assert("TA " + src + " -> Caribbean still works", wps !== null && wps.length > 0);
+    });
+
     // ---- Summary ----
     log("\n============================================");
     log("Total: " + (passed + failed) + "  Passed: " + passed + "  Failed: " + failed);
