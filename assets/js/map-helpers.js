@@ -34,8 +34,8 @@ function generateMultiSegmentPath(points) {
   if (!points || points.length < 2) return null;
   if (points.length === 2) return generateArc(points[0], points[1]);
 
-  // Guard 1: Proximity filter — remove consecutive points closer than 15px
-  var MIN_SEGMENT_PX = 15;
+  // Guard 1: Proximity filter — remove consecutive points closer than 8px
+  var MIN_SEGMENT_PX = 8;
   var filtered = [points[0]];
   for (var f = 1; f < points.length; f++) {
     var prev = filtered[filtered.length - 1];
@@ -91,9 +91,16 @@ function generateRoutedPath(sourceCode, srcPt, convergePt, destCode) {
     var dynamicWps = computeDynamicWaypoints(sourceCode, destCode, convergePt);
     if (dynamicWps) {
       var allPoints = [srcPt];
-      for (var i = 0; i < dynamicWps.length; i++) {
-        var projected = _projection([dynamicWps[i].lng, dynamicWps[i].lat]);
-        if (projected) allPoints.push(projected);
+      if (dynamicWps._screen) {
+        // Screen-space waypoints from ribbon system — no projection needed
+        for (var i = 0; i < dynamicWps.points.length; i++) {
+          allPoints.push(dynamicWps.points[i]);
+        }
+      } else {
+        for (var i = 0; i < dynamicWps.length; i++) {
+          var projected = _projection([dynamicWps[i].lng, dynamicWps[i].lat]);
+          if (projected) allPoints.push(projected);
+        }
       }
       allPoints.push(convergePt);
       return generateMultiSegmentPath(allPoints);

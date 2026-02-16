@@ -76,8 +76,8 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
     return (scB ? scB.lat : 0) - (scA ? scA.lat : 0);
   });
 
-  // Fréchet-based stem separation
-  if (typeof separateStems === 'function') {
+  // Spine-and-ribbon stem separation (non-crossing by construction)
+  if (typeof computeRibbonStems === 'function') {
     var stemInfos = flows.map(function(f) {
       var sc = getCoords(f.source_code);
       if (!sc) return null;
@@ -85,7 +85,7 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
       if (!srcPt) return null;
       return { sourceCode: f.source_code, srcPt: srcPt, destCode: destCode };
     }).filter(Boolean);
-    separateStems(stemInfos, convergePt, destCode);
+    computeRibbonStems(stemInfos, convergePt, destCode);
   }
 
   var cs = getComputedStyle(document.documentElement);

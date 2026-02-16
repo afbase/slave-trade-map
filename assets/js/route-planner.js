@@ -421,107 +421,360 @@ function discreteFrechet(P, Q) {
 
 var STEM_MIN_SPACING = 12;
 
-function separateStems(stemInfos, convergePt, destCode) {
+// ===== Spine-and-Ribbon System for Non-Crossing Stems =====
+
+function taperAlpha(t) {
+  t = Math.max(0, Math.min(1, t));
+  return 1 - 3 * t * t + 2 * t * t * t;
+}
+
+function arcLengthReparameterize(spinePoints, numSamples) {
+  numSamples = numSamples || 40;
+  if (spinePoints.length < 2) return spinePoints.slice();
+  var cumLen = [0];
+  for (var i = 1; i < spinePoints.length; i++) {
+    var dx = spinePoints[i][0] - spinePoints[i - 1][0];
+    var dy = spinePoints[i][1] - spinePoints[i - 1][1];
+    cumLen.push(cumLen[i - 1] + Math.sqrt(dx * dx + dy * dy));
+  }
+  var totalLen = cumLen[cumLen.length - 1];
+  if (totalLen < 1) return spinePoints.slice();
+  var samples = [];
+  for (var s = 0; s <= numSamples; s++) {
+    var targetLen = (s / numSamples) * totalLen;
+    var segIdx = cumLen.length - 2;
+    for (var j = 1; j < cumLen.length; j++) {
+      if (cumLen[j] >= targetLen) { segIdx = j - 1; break; }
+    }
+    var segLen = cumLen[segIdx + 1] - cumLen[segIdx];
+    var t = segLen > 0 ? (targetLen - cumLen[segIdx]) / segLen : 0;
+    samples.push([
+      spinePoints[segIdx][0] + t * (spinePoints[segIdx + 1][0] - spinePoints[segIdx][0]),
+      spinePoints[segIdx][1] + t * (spinePoints[segIdx + 1][1] - spinePoints[segIdx][1])
+    ]);
+  }
+  return samples;
+}
+
+function computeFrenetFrame(samples) {
+  var n = samples.length;
+  var tangents = [];
+  var normals = [];
+  for (var i = 0; i < n; i++) {
+    var tx, ty;
+    if (i === 0) {
+      tx = samples[1][0] - samples[0][0];
+      ty = samples[1][1] - samples[0][1];
+    } else if (i === n - 1) {
+      tx = samples[n - 1][0] - samples[n - 2][0];
+      ty = samples[n - 1][1] - samples[n - 2][1];
+    } else {
+      tx = samples[i + 1][0] - samples[i - 1][0];
+      ty = samples[i + 1][1] - samples[i - 1][1];
+    }
+    var len = Math.sqrt(tx * tx + ty * ty);
+    if (len < 0.001) { tx = 1; ty = 0; len = 1; }
+    tx /= len;
+    ty /= len;
+    tangents.push([tx, ty]);
+    normals.push([-ty, tx]);
+  }
+  return { tangents: tangents, normals: normals };
+}
+
+function computeSpine(stemInfos, convergePt, destCode) {
+  if (!_projection || !_projection.invert) return null;
+  var destQuadrant = classifyDestQuadrant(destCode);
+  var groupA = stemInfos.filter(function(info) {
+    var src = Math.floor(info.sourceCode / 100) * 100;
+    return src !== 60800;
+  });
+  if (groupA.length === 0) return null;
+
+  // Find median source by latitude
+  var sorted = groupA.slice().sort(function(a, b) {
+    var scA = getCoords(a.sourceCode);
+    var scB = getCoords(b.sourceCode);
+    return (scA ? scA.lat : 0) - (scB ? scB.lat : 0);
+  });
+  var medianSource = sorted[Math.floor(sorted.length / 2)];
+
+  var chain = buildWaypointChain(medianSource.sourceCode, destQuadrant);
+  if (!chain || chain.length === 0) return null;
+  chain = avoidLand(chain, window._landFeatures);
+
+  // Centroid of Group A source positions (screen space)
+  var sumX = 0, sumY = 0;
+  for (var i = 0; i < groupA.length; i++) {
+    sumX += groupA[i].srcPt[0];
+    sumY += groupA[i].srcPt[1];
+  }
+  var centroid = [sumX / groupA.length, sumY / groupA.length];
+
+  // Spine: centroid -> projected waypoints -> convergePt
+  var spinePoints = [centroid];
+  for (var i = 0; i < chain.length; i++) {
+    var pp = _projection([chain[i].lng, chain[i].lat]);
+    if (pp) spinePoints.push(pp);
+  }
+  spinePoints.push(convergePt);
+  return spinePoints;
+}
+
+function computeRibbonOffsets(sortedInfos, spineSamples, frame, spacing, sign) {
+  var n = sortedInfos.length;
+  var maxAbsOffset = Math.abs((n - 1) / 2 * spacing);
+
+  // Compute curvature cap at each sample
+  var curvCap = [];
+  for (var k = 0; k < spineSamples.length; k++) {
+    if (k === 0 || k === spineSamples.length - 1) {
+      curvCap[k] = 1.0;
+      continue;
+    }
+    var dot = frame.tangents[k-1][0] * frame.tangents[k][0] +
+              frame.tangents[k-1][1] * frame.tangents[k][1];
+    dot = Math.max(-1, Math.min(1, dot));
+    var angle = Math.acos(dot);
+    var dx = spineSamples[k][0] - spineSamples[k-1][0];
+    var dy = spineSamples[k][1] - spineSamples[k-1][1];
+    var segLen = Math.sqrt(dx * dx + dy * dy);
+    var kappa = segLen > 0.001 ? angle / segLen : 0;
+    var R = kappa > 0.001 ? 1 / kappa : 1e6;
+    curvCap[k] = maxAbsOffset > 0 ? Math.min(1.0, R / maxAbsOffset) : 1.0;
+  }
+
+  // Smooth the cap to avoid abrupt transitions (3-point moving average)
+  var smoothCap = curvCap.slice();
+  for (var k = 1; k < curvCap.length - 1; k++) {
+    smoothCap[k] = (curvCap[k-1] + curvCap[k] + curvCap[k+1]) / 3;
+  }
+
+  var ribbons = [];
+  for (var i = 0; i < n; i++) {
+    var d_i = sign * (i - (n - 1) / 2) * spacing;
+    var ribbonPts = [];
+    for (var k = 0; k < spineSamples.length; k++) {
+      var t = k / (spineSamples.length - 1);
+      var alpha = taperAlpha(t) * smoothCap[k];
+      ribbonPts.push([
+        spineSamples[k][0] + d_i * alpha * frame.normals[k][0],
+        spineSamples[k][1] + d_i * alpha * frame.normals[k][1]
+      ]);
+    }
+    ribbons.push({ info: sortedInfos[i], points: ribbonPts, offset: d_i });
+  }
+  return ribbons;
+}
+
+function computeJunction(capeEndPt, spineSamples, frame, landFeatures) {
+  var maxIdx = Math.floor(spineSamples.length * 0.7);
+  var bestIdx = Math.floor(spineSamples.length * 0.3);
+  var bestScore = -Infinity;
+  for (var k = 1; k <= maxIdx; k++) {
+    var dx = spineSamples[k][0] - capeEndPt[0];
+    var dy = spineSamples[k][1] - capeEndPt[1];
+    var len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1) continue;
+    dx /= len; dy /= len;
+    var alignment = Math.abs(dx * frame.tangents[k][0] + dy * frame.tangents[k][1]);
+    if (_projection && _projection.invert && landFeatures) {
+      var geo = _projection.invert(spineSamples[k]);
+      if (geo) {
+        var onLand = false;
+        for (var f = 0; f < landFeatures.length; f++) {
+          if (d3.geoContains(landFeatures[f], [geo[0], geo[1]])) { onLand = true; break; }
+        }
+        if (onLand) continue;
+      }
+    }
+    if (alignment > bestScore) { bestScore = alignment; bestIdx = k; }
+  }
+  return bestIdx;
+}
+
+function taperAlpha60800(t, tJ) {
+  if (t < tJ || tJ >= 1) return 0;
+  return taperAlpha((t - tJ) / (1 - tJ));
+}
+
+function ribbonToGeoWaypoints(screenPts) {
+  var geoWps = [];
+  var lastX = -Infinity, lastY = -Infinity;
+  for (var j = 0; j < screenPts.length; j++) {
+    var dx = screenPts[j][0] - lastX;
+    var dy = screenPts[j][1] - lastY;
+    if (Math.sqrt(dx * dx + dy * dy) < 10 && j < screenPts.length - 1) continue;
+    var inv = _projection.invert(screenPts[j]);
+    if (inv) {
+      geoWps.push({ lat: inv[1], lng: inv[0] });
+      lastX = screenPts[j][0];
+      lastY = screenPts[j][1];
+    }
+  }
+  return geoWps;
+}
+
+function ribbonToScreenWaypoints(screenPts) {
+  var result = [];
+  var lastX = -Infinity, lastY = -Infinity;
+  for (var j = 0; j < screenPts.length; j++) {
+    var dx = screenPts[j][0] - lastX;
+    var dy = screenPts[j][1] - lastY;
+    if (Math.sqrt(dx * dx + dy * dy) < 10 && j < screenPts.length - 1) continue;
+    result.push([screenPts[j][0], screenPts[j][1]]);
+    lastX = screenPts[j][0];
+    lastY = screenPts[j][1];
+  }
+  return result;
+}
+
+function computeRibbonStems(stemInfos, convergePt, destCode) {
   if (!stemInfos || stemInfos.length < 2) return;
   if (!_projection || !_projection.invert) return;
 
+  // Only apply ribbon to transatlantic African sources
+  var hasAfrican = stemInfos.some(function(info) {
+    var src = Math.floor(info.sourceCode / 100) * 100;
+    return src >= 60100 && src <= 60900;
+  });
+  if (!hasAfrican) return;
+
   var destQuadrant = classifyDestQuadrant(destCode);
 
-  // Build projected waypoint paths for each stem
-  var paths = stemInfos.map(function(info) {
-    var chain = buildWaypointChain(info.sourceCode, destQuadrant);
-    if (!chain) return null;
+  // Separate Group A (West Coast) and 60800 (SE Africa)
+  var groupA = [];
+  var se60800 = null;
+  for (var i = 0; i < stemInfos.length; i++) {
+    var src = Math.floor(stemInfos[i].sourceCode / 100) * 100;
+    if (src === 60800) { se60800 = stemInfos[i]; }
+    else { groupA.push(stemInfos[i]); }
+  }
+  if (groupA.length === 0) return;
 
-    var pts = [info.srcPt];
-    for (var i = 0; i < chain.length; i++) {
-      var pp = _projection([chain[i].lng, chain[i].lat]);
-      if (pp) pts.push(pp);
-    }
-    pts.push(convergePt);
-    return { info: info, pts: pts, chain: chain };
-  }).filter(Boolean);
+  // Sort Group A north-to-south (matching map-flows.js sort)
+  groupA.sort(function(a, b) {
+    var scA = getCoords(a.sourceCode);
+    var scB = getCoords(b.sourceCode);
+    return (scB ? scB.lat : 0) - (scA ? scA.lat : 0);
+  });
 
-  if (paths.length < 2) return;
+  // Step 1: Compute spine
+  var spinePoints = computeSpine(stemInfos, convergePt, destCode);
+  if (!spinePoints || spinePoints.length < 2) return;
 
-  // Multi-pass separation (up to 3 iterations)
-  for (var pass = 0; pass < 3; pass++) {
-    var anyNudge = false;
+  // Step 2: Arc-length reparameterize
+  var NUM_SAMPLES = 80;
+  var spineSamples = arcLengthReparameterize(spinePoints, NUM_SAMPLES);
+  var frame = computeFrenetFrame(spineSamples);
 
-    for (var i = 0; i < paths.length - 1; i++) {
-      var pathA = paths[i];
-      var pathB = paths[i + 1];
-      var result = discreteFrechet(pathA.pts, pathB.pts);
+  // Step 3: Determine offset sign so offsets match source spread direction
+  var firstSrc = groupA[0].srcPt;
+  var lastSrc = groupA[groupA.length - 1].srcPt;
+  var spreadDx = lastSrc[0] - firstSrc[0];
+  var spreadDy = lastSrc[1] - firstSrc[1];
+  var dot = spreadDx * frame.normals[0][0] + spreadDy * frame.normals[0][1];
+  var sign = dot >= 0 ? 1 : -1;
 
-      if (result.distance < STEM_MIN_SPACING) {
-        var coupling = result.coupling;
-        var chain = pathB.chain;
+  // Step 4: Compute ribbon offsets
+  var spacing = STEM_MIN_SPACING;
+  var ribbons = computeRibbonOffsets(groupA, spineSamples, frame, spacing, sign);
 
-        // Build per-waypoint minimum distance from coupling
-        var waypointMinDist = [];
-        for (var w = 0; w < chain.length; w++) {
-          waypointMinDist[w] = Infinity;
-        }
-
-        for (var c = 0; c < coupling.length; c++) {
-          var bIdx = coupling[c][1];
-          var aIdx = coupling[c][0];
-          if (bIdx >= 1 && bIdx <= chain.length) {
-            var d = euclidean(pathA.pts[aIdx], pathB.pts[bIdx]);
-            var wIdx = bIdx - 1;
-            if (d < waypointMinDist[wIdx]) waypointMinDist[wIdx] = d;
+  // Land check with retry (reduce spacing if ribbons cross land)
+  for (var attempt = 0; attempt < 3; attempt++) {
+    var anyOnLand = false;
+    if (window._landFeatures && _projection.invert) {
+      for (var r = 0; r < ribbons.length && !anyOnLand; r++) {
+        for (var k = Math.floor(ribbons[r].points.length * 0.15);
+             k < Math.floor(ribbons[r].points.length * 0.85) && !anyOnLand; k += 3) {
+          var geo = _projection.invert(ribbons[r].points[k]);
+          if (geo && isPointOnLand(geo[1], geo[0], window._landFeatures)) {
+            anyOnLand = true;
           }
         }
-
-        // Nudge each waypoint proportional to its proximity deficit
-        for (var w = 0; w < chain.length; w++) {
-          var wp = chain[w];
-          var projected = _projection([wp.lng, wp.lat]);
-          if (!projected) continue;
-
-          var localDeficit = STEM_MIN_SPACING - waypointMinDist[w];
-          if (localDeficit <= 0) continue;
-
-          // Taper at chain endpoints
-          var t = (w + 1) / (chain.length + 1);
-          var taper = Math.sin(Math.PI * t);
-          var offset = localDeficit * taper * 1.2; // 1.2x overshoot for spline safety
-
-          // Local flow direction from adjacent waypoints
-          var prevPt = pathB.pts[w]; // point before this waypoint
-          var nextPt = (w + 2 < pathB.pts.length) ? pathB.pts[w + 2] : convergePt;
-          var dx = nextPt[0] - prevPt[0];
-          var dy = nextPt[1] - prevPt[1];
-          var len = Math.sqrt(dx * dx + dy * dy);
-          if (len < 1) continue;
-          var perpX = dy / len;
-          var perpY = -dx / len;
-
-          var newScreenX = projected[0] + perpX * offset;
-          var newScreenY = projected[1] + perpY * offset;
-          var inv = _projection.invert([newScreenX, newScreenY]);
-          if (inv) {
-            chain[w] = { lat: inv[1], lng: inv[0] };
-            anyNudge = true;
-          }
-        }
-
-        // Rebuild pathB.pts with updated waypoints
-        var newPts = [pathB.info.srcPt];
-        for (var w = 0; w < chain.length; w++) {
-          var pp = _projection([chain[w].lng, chain[w].lat]);
-          if (pp) newPts.push(pp);
-        }
-        newPts.push(convergePt);
-        pathB.pts = newPts;
-
-        // Update waypoint cache
-        var cacheKey = pathB.info.sourceCode + ":" + destCode + ":" +
-          Math.round(convergePt[0]) + ":" + Math.round(convergePt[1]);
-        _waypointCache[cacheKey] = chain;
       }
     }
+    if (!anyOnLand) break;
+    spacing *= 0.8;
+    ribbons = computeRibbonOffsets(groupA, spineSamples, frame, spacing, sign);
+  }
 
-    // Early exit if no nudges were needed
-    if (!anyNudge) break;
+  // Step 5: Cache waypoints for each Group A stem
+  var SNAP_THRESHOLD = 4; // pixels — snap ribbon points to spine when offset is tiny
+  for (var i = 0; i < ribbons.length; i++) {
+    var ribbon = ribbons[i];
+    var info = ribbon.info;
+    // Ribbon waypoints: skip last point (it equals convergePt since taper→0)
+    var screenPts = [];
+    for (var k = 0; k < ribbon.points.length - 1; k++) {
+      var t = k / (spineSamples.length - 1);
+      var alpha = taperAlpha(t);
+      var effectiveOffset = Math.abs(ribbon.offset * alpha);
+      if (effectiveOffset < SNAP_THRESHOLD) {
+        screenPts.push(spineSamples[k]); // snap to spine
+      } else {
+        screenPts.push(ribbon.points[k]);
+      }
+    }
+    var screenWps = ribbonToScreenWaypoints(screenPts);
+    var cacheKey = info.sourceCode + ":" + destCode + ":" +
+      Math.round(convergePt[0]) + ":" + Math.round(convergePt[1]);
+    _waypointCache[cacheKey] = { _screen: true, points: screenWps };
+  }
+
+  // Step 6: Handle 60800 (SE Africa) junction
+  if (se60800) {
+    var chain60800 = buildWaypointChain(60800, destQuadrant);
+    if (chain60800 && chain60800.length > 0) {
+      chain60800 = avoidLand(chain60800, window._landFeatures);
+      var lastWp = chain60800[chain60800.length - 1];
+      var capeEndPt = _projection([lastWp.lng, lastWp.lat]);
+      if (capeEndPt) {
+        var jIdx = computeJunction(capeEndPt, spineSamples, frame, window._landFeatures);
+        var tJ = jIdx / (spineSamples.length - 1);
+
+        // 60800 gets the last offset position
+        var totalStems = groupA.length + 1;
+        var d_60800 = sign * (groupA.length - (totalStems - 1) / 2) * spacing;
+
+        // Junction target with offset
+        var junctionTarget = [
+          spineSamples[jIdx][0] + d_60800 * frame.normals[jIdx][0],
+          spineSamples[jIdx][1] + d_60800 * frame.normals[jIdx][1]
+        ];
+
+        // Build ribbon segment from junction to convergePt
+        var ribbonSeg = [];
+        for (var k = jIdx; k < spineSamples.length - 1; k++) {
+          var t = k / (spineSamples.length - 1);
+          var alpha = taperAlpha60800(t, tJ);
+          var effectiveOffset = Math.abs(d_60800 * alpha);
+          if (effectiveOffset < SNAP_THRESHOLD) {
+            ribbonSeg.push(spineSamples[k].slice());
+          } else {
+            ribbonSeg.push([
+              spineSamples[k][0] + d_60800 * alpha * frame.normals[k][0],
+              spineSamples[k][1] + d_60800 * alpha * frame.normals[k][1]
+            ]);
+          }
+        }
+
+        // Full 60800 screen path: cape waypoints → junction → ribbon segment
+        var fullScreen = [];
+        for (var w = 0; w < chain60800.length; w++) {
+          var pp = _projection([chain60800[w].lng, chain60800[w].lat]);
+          if (pp) fullScreen.push(pp);
+        }
+        fullScreen.push(junctionTarget);
+        for (var k = 0; k < ribbonSeg.length; k++) {
+          fullScreen.push(ribbonSeg[k]);
+        }
+
+        var screenWps = ribbonToScreenWaypoints(fullScreen);
+        var cacheKey = se60800.sourceCode + ":" + destCode + ":" +
+          Math.round(convergePt[0]) + ":" + Math.round(convergePt[1]);
+        _waypointCache[cacheKey] = { _screen: true, points: screenWps };
+      }
+    }
   }
 }
