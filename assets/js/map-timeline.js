@@ -21,10 +21,22 @@ function renderTimeline(yearlyFlowsJson, globalMinYear, globalMaxYear) {
   var span = globalMaxYear - globalMinYear;
   var binSize = span > 100 ? 10 : span > 30 ? 5 : 1;
 
-  // Fixed logical dimensions — CSS scales via viewBox
-  var margin = { top: 4, right: 0, bottom: 18, left: 0 };
-  var logicalW = 800;
+  // Dynamic width calculation based on actual container
+  var containerWidth = container.clientWidth;
+  var logicalW = Math.max(containerWidth, 800); // Use actual width or minimum 800
   var logicalH = 60;
+
+  // Try to measure label positions for precise alignment
+  var sliderLabel = container.parentElement.querySelector('.slider-label');
+  var labelMargin = 0;
+  if (sliderLabel) {
+    var labelRect = sliderLabel.getBoundingClientRect();
+    var containerRect = container.getBoundingClientRect();
+    // Calculate horizontal offset if labels have padding/margin
+    labelMargin = labelRect.left - containerRect.left;
+  }
+
+  var margin = { top: 4, right: Math.max(0, labelMargin), bottom: 18, left: Math.max(0, labelMargin) };
   var innerW = logicalW - margin.left - margin.right;
   var innerH = logicalH - margin.top - margin.bottom;
 
@@ -106,7 +118,8 @@ function renderTimeline(yearlyFlowsJson, globalMinYear, globalMaxYear) {
   var x = d3.scaleBand()
     .domain(bins)
     .range([0, innerW])
-    .padding(0.08);
+    .padding(0.08)
+    .paddingOuter(0);
 
   var y = d3.scaleLinear()
     .domain([0, maxBinTotal])
