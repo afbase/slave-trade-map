@@ -304,7 +304,80 @@ Remarkably, Great Britain and Portugal together accounted for **88.2%** of voyag
 
 ---
 
-## IX. Haiti (Saint-Domingue)
+## IX. Nueva Espana (New Spain)
+
+### The earliest American destination
+
+Nueva Espana---encompassing the ports of Veracruz, Campeche, Guatemala, and Santo Tomas de Castilla---received **744 voyages** carrying approximately **271,798 enslaved people** at a mean mortality of **43.4%**, well above both the trans-Atlantic average (29.3%) and the broader Spanish Circum-Caribbean average (35.4%). These voyages span 1545--1817, though **98.3% occurred before 1675**, making Nueva Espana an almost exclusively early-colonial destination within the trans-Atlantic slave trade.
+
+Nueva Espana constitutes a distinct sub-region within the broader Spanish Circum-Caribbean (MJSELIMP=41200, 1,498 total voyages). The remaining SCC voyages divide among Nueva Granada proper (Colombia/Panama), Venezuela, Honduras, and unspecified ports.
+
+### Port breakdown
+
+| Port | Voyages | Enslaved | Mortality (%) | Period |
+|---|---|---|---|---|
+| Nueva Espana, unspecified | 510 | 186,239 | 36.7 | 1545--1666 |
+| Veracruz | 280 | 103,866 | 51.1 | 1546--1733 |
+| Campeche | 166 | 60,982 | 61.2 | 1598--1735 |
+| Guatemala | 4 | 1,280 | 25.0 | 1621--1817 |
+| Santo Tomas de Castilla | 1 | 362 | 58.0 | 1613 |
+
+**Veracruz** was the principal named port, handling 280 documented voyages. **Campeche** had the highest mortality at **61.2%**---more than double the trans-Atlantic average---likely reflecting longer coastal redistribution routes within the Gulf of Mexico after the Atlantic crossing. The large "unspecified" category (510 voyages) reflects the early period's poor record-keeping; these voyages are known to have arrived somewhere in New Spain but the specific port was not recorded.
+
+### Temporally confined to the early colonial period
+
+| Era | Voyages | Enslaved | Mortality (%) |
+|---|---|---|---|
+| 1525--1575 | 81 | 29,542 | 28.3 |
+| 1575--1625 | 396 | 147,501 | 45.3 |
+| 1625--1675 | 254 | 90,849 | 45.1 |
+| 1675--1700 | 3 | -- | 31.3 |
+
+The overwhelming concentration of voyages in 1575--1625 (53.2% of total) corresponds to the height of the asiento system under the Spanish Habsburg monarchy, when the Crown contracted with Portuguese and later English merchants to supply enslaved labor to its American colonies. The 25-year breakdown reveals that 1600--1625 was the single most active quarter-century, with 316 voyages and the highest mortality (51.6%).
+
+After 1675, the trade to Nueva Espana effectively ceased---only 3 voyages are documented between 1675 and 1700, and sporadic single voyages thereafter. This termination reflects the shift of Spanish colonial labor demand to Cuba and the declining economic importance of the Mexican silver economy relative to Caribbean sugar.
+
+### A Portuguese-then-British operation
+
+| Flag | Voyages | Pct | Enslaved | Mortality (%) |
+|---|---|---|---|---|
+| Portugal / Brazil | 415 | 55.8% | 151,380 | 55.6 |
+| Great Britain | 288 | 38.7% | 104,578 | 25.9 |
+| Spain / Uruguay | 37 | 5.0% | 13,791 | 41.4 |
+
+**Portugal dominated the early period** through the asiento system: as holders of the slave-trading monopoly for Spanish colonies, Portuguese merchants supplied over half of all voyages to Nueva Espana. Their mortality rate of **55.6%** was dramatically higher than the British rate of **25.9%**---a gap of nearly 30 percentage points. This may reflect the Portuguese trade's earlier temporal position (higher mortality in earlier eras) and different routing patterns.
+
+**Great Britain entered through the Guinea Company of London**, which directed 113 of its 318 total voyages to Nueva Espana. British participation was concentrated in the 1618--1660 period, overlapping with and eventually replacing Portuguese asiento holders. The dramatically lower British mortality (25.9%) may reflect later-period operations when trade infrastructure had improved.
+
+Spain itself supplied only **5.0%** of the enslaved labor to its own colony, continuing the pattern seen across the entire Spanish Circum-Caribbean.
+
+### African sources: West Central Africa and Senegambia
+
+| Source Region | Voyages | Pct |
+|---|---|---|
+| West Central Africa & St. Helena | 449 | 60.3% |
+| Senegambia & offshore Atlantic | 216 | 29.0% |
+| Other Africa | 38 | 5.1% |
+| Bight of Biafra & Gulf of Guinea islands | 26 | 3.5% |
+| Bight of Benin | 12 | 1.6% |
+
+**West Central Africa** was the primary source (60.3%), consistent with the Portuguese trade networks centered on Luanda. **Senegambia** contributed 29.0%, reflecting the earliest phase of the trade when Upper Guinea was the primary embarkation zone. Together these two regions supplied nearly 90% of all enslaved people sent to New Spain.
+
+### Company involvement
+
+The trade to Nueva Espana was **81.7% independent** (non-company) operations---the highest independent share of any major destination analyzed, reflecting the asiento system's reliance on individual licensed traders rather than chartered monopolies. The **Guinea Company of London** was the only significant company presence, accounting for 113 voyages (15.2%). The Brazil Company contributed 10 voyages, and the RAC/SSC combination contributed 7 voyages in the later period.
+
+### Extreme overcrowding on small ships
+
+Nueva Espana-bound ships averaged **115 tons**---the smallest of any major destination---with an overcrowding rate of **3.60 slaves per ton**, the highest of any regional analysis. Average crew was 14.5 with 6.1 guns per ship. The middle passage averaged 54.4 days. These metrics paint a picture of small, lightly armed vessels packed beyond capacity---consistent with the early-period Portuguese trade before standardization and regulation.
+
+### UMAP positioning
+
+In the UMAP embedding, Nueva Espana voyages cluster at centroid **(6.81, -1.07)**, displaced **4.66 units** from the overall dataset centroid and **0.94 units** from the broader SCC centroid. The NE cluster sits in the early-period / Portuguese zone of the embedding, adjacent to but distinguishable from the Nueva Granada cluster. The relatively high UMAP spread (std 8.29, 7.07) reflects the 130-year temporal range and the transition from Portuguese to British operators within the same destination.
+
+---
+
+## X. Haiti (Saint-Domingue)
 
 ### The French colony that consumed human lives
 
@@ -334,7 +407,7 @@ Saint-Domingue drew from a broad range of African regions: **West Central Africa
 
 ---
 
-## X. The United States
+## XI. The United States
 
 ### A smaller but significant destination
 
@@ -380,7 +453,7 @@ The U.S. drew from the broadest range of African sources of any destination: **S
 
 ---
 
-## XI. UMAP Structural Findings
+## XII. UMAP Structural Findings
 
 ### 193 clusters reveal natural groupings
 
@@ -396,7 +469,7 @@ Each chartered company occupies a characteristic region of the UMAP space. The m
 
 ---
 
-## XII. Abolition: A Structural Transformation, Not a Cessation
+## XIII. Abolition: A Structural Transformation, Not a Cessation
 
 ### The largest break in the dataset
 
@@ -442,7 +515,7 @@ Of the 193 HDBSCAN clusters, **116 contain only pre-abolition voyages** and **22
 
 ---
 
-## XIII. HDBSCAN Cluster Profiles
+## XIV. HDBSCAN Cluster Profiles
 
 ### 193 clusters are not arbitrary
 
@@ -483,7 +556,7 @@ Clusters dominated by wartime voyages (>99%) are exclusively British: Clusters 6
 
 ---
 
-## XIV. National Trajectories Through UMAP Space
+## XV. National Trajectories Through UMAP Space
 
 ### Each nation traces a path through history
 
@@ -501,7 +574,7 @@ By computing the centroid of each nation's voyages per 25-year era and connectin
 
 ---
 
-## XV. The Caribbean Compared
+## XVI. The Caribbean Compared
 
 ### Eight Caribbean destinations, eight different profiles
 
@@ -528,7 +601,7 @@ By computing the centroid of each nation's voyages per 25-year era and connectin
 
 ---
 
-## XVI. Outliers: The Anomalous 19%
+## XVII. Outliers: The Anomalous 19%
 
 ### 6,022 voyages don't fit any cluster
 
@@ -556,7 +629,7 @@ Portuguese/Brazilian voyages make up 38.3% of outliers but only 32.2% of normal 
 
 ---
 
-## XVII. The Geography of Forced Migration: African Source-Destination Pairings
+## XVIII. The Geography of Forced Migration: African Source-Destination Pairings
 
 ### Each African region fed a different American system
 
@@ -596,7 +669,7 @@ Brazil's reliance on West Central Africa (52%) is the tightest source-destinatio
 
 ---
 
-## XVIII. Ship Evolution: Three Centuries of Slaving Vessels
+## XIX. Ship Evolution: Three Centuries of Slaving Vessels
 
 ### The slave ship was not static
 
@@ -618,7 +691,7 @@ Brazil's reliance on West Central Africa (52%) is the tightest source-destinatio
 
 ---
 
-## XIX. Guns, Crews, and Resistance
+## XX. Guns, Crews, and Resistance
 
 ### More guns, more resistance
 
@@ -650,7 +723,7 @@ The U.S. had the highest crew ratio (1:7) but the second-highest resistance rate
 
 ---
 
-## XX. Voyage Duration and the Price of Distance
+## XXI. Voyage Duration and the Price of Distance
 
 ### The crossing shortened dramatically over three centuries
 
@@ -672,7 +745,7 @@ For Jamaica-bound voyages, the duration-mortality correlation (r = +0.43) is the
 
 ---
 
-## XXI. The "Other Africa" Problem: 23% of Voyages Have No Specified African Origin
+## XXII. The "Other Africa" Problem: 23% of Voyages Have No Specified African Origin
 
 ### A significant data limitation
 

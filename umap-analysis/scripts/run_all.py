@@ -43,6 +43,7 @@ from tastdb_umap.plotting import (
     plot_temporal_small_multiples,
     plot_company_timeline_gantt,
     plot_centroid_trajectories,
+    plot_nueva_espana_highlight,
 )
 from tastdb_umap.interactive_plots import create_3d_exploration, create_temporal_slider
 from tastdb_umap.blog_generator import generate_blog_post, copy_to_slavecodes
@@ -213,6 +214,7 @@ def main():
         ("13 Temporal small multiples", lambda: plot_temporal_small_multiples(emb_a, df_a, value_labels=value_labels)),
         ("14 Company timeline Gantt", lambda: plot_company_timeline_gantt(df_a, value_labels=value_labels)),
         ("15 Centroid trajectories", lambda: plot_centroid_trajectories(emb_a, df_a, value_labels=value_labels)),
+        ("16 Nueva Espana highlight", lambda: plot_nueva_espana_highlight(emb_a, df_a, value_labels=value_labels)),
     ]
 
     for name, func in plot_funcs:

@@ -16,6 +16,8 @@ from .config import (
     IMAGES_DIR,
     NAT_CODE_TO_NAME,
     NATIONALITY_COLORS,
+    NUEVA_ESPANA_PORT_NAMES,
+    NUEVA_ESPANA_PORTS,
     PLOT_DPI,
     PLOT_FIGSIZE,
     SCATTER_ALPHA,
@@ -641,3 +643,71 @@ def plot_centroid_trajectories(emb, df, output_dir=None, value_labels=None, **kw
     ax.set_xlabel("UMAP 1")
     ax.set_ylabel("UMAP 2")
     _save_fig(fig, "15_umap_centroid_trajectories.png", output_dir)
+
+
+# ── 16. Nueva Espana highlight ──────────────────────────────────────────────
+
+
+def plot_nueva_espana_highlight(emb, df, output_dir=None, value_labels=None, **kwargs):
+    """Highlight Nueva Espana (ports 41201-41205) voyages colored by port."""
+    fig, ax = plt.subplots(figsize=PLOT_FIGSIZE)
+
+    # Background: all voyages in light gray
+    ax.scatter(
+        emb[:, 0], emb[:, 1],
+        s=1, alpha=0.05, color="#d0d0d0",
+    )
+
+    # Determine which rows are Nueva Espana via port columns
+    port_cols = [c for c in ["MJSLPTIMP", "MAJSELPT", "SLA1PORT", "ARRPORT"] if c in df.columns]
+    scc_mask = df["MJSELIMP"] == 41200
+
+    port_colors = {
+        41201: "#999999",   # unspecified - gray
+        41202: "#e41a1c",   # Campeche - red
+        41203: "#377eb8",   # Veracruz - blue
+        41204: "#4daf4a",   # Guatemala - green
+        41205: "#ff7f00",   # Santo Tomas - orange
+    }
+
+    for code in NUEVA_ESPANA_PORTS:
+        port_mask = scc_mask.copy()
+        col_match = pd.Series(False, index=df.index)
+        for col in port_cols:
+            col_match = col_match | (df[col] == code)
+        port_mask = port_mask & col_match
+
+        if port_mask.sum() == 0:
+            continue
+
+        name = NUEVA_ESPANA_PORT_NAMES.get(code, str(code))
+        color = port_colors.get(code, "#999999")
+        ax.scatter(
+            emb[port_mask.values, 0], emb[port_mask.values, 1],
+            s=SCATTER_SIZE + 3, alpha=0.6, color=color, label=f"{name} ({port_mask.sum()})",
+        )
+
+    # Mark centroid of all NE voyages
+    ne_mask = scc_mask.copy()
+    ne_col_match = pd.Series(False, index=df.index)
+    for col in port_cols:
+        ne_col_match = ne_col_match | df[col].isin(NUEVA_ESPANA_PORTS)
+    ne_mask = ne_mask & ne_col_match
+
+    if ne_mask.sum() > 0:
+        cx = emb[ne_mask.values, 0].mean()
+        cy = emb[ne_mask.values, 1].mean()
+        ax.annotate(
+            "Nueva Espana\ncentroid",
+            (cx, cy),
+            fontsize=9, fontweight="bold", ha="center",
+            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray", alpha=0.9),
+            arrowprops=dict(arrowstyle="->", color="black"),
+            xytext=(cx + 1.5, cy + 1.5),
+        )
+
+    ax.set_title("UMAP: Nueva Espana (New Spain) Voyages by Port")
+    ax.set_xlabel("UMAP 1")
+    ax.set_ylabel("UMAP 2")
+    ax.legend(markerscale=4, fontsize=8, frameon=True)
+    _save_fig(fig, "16_umap_nueva_espana.png", output_dir)
