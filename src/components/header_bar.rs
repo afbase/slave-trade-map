@@ -16,9 +16,7 @@ pub fn HeaderBar() -> Element {
     };
     let subtitle_text = match ds_mode_str.as_str() {
         "interamerican" => "Based on 11,521 voyages from the Intra-American Slave Trade Database",
-        "combined" => {
-            "36,108 transatlantic + 11,521 inter-American voyages from SlaveVoyages.org"
-        }
+        "combined" => "36,108 transatlantic + 11,521 inter-American voyages from SlaveVoyages.org",
         _ => "Based on 36,108 voyages from the Trans-Atlantic Slave Trade Database",
     };
 

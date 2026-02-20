@@ -193,7 +193,9 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
   if (destQuadrant === "rio-plata" || destQuadrant === "pacific-south") {
     bias = "south-atlantic";
   }
-  var trunkPath = generateArc(convergePt, destPt, bias);
+  var trunkPath = (typeof window.generate_arc === 'function')
+    ? window.generate_arc(convergePt[0], convergePt[1], destPt[0], destPt[1], bias || "")
+    : generateArc(convergePt, destPt, bias);
   if (trunkPath) {
     _flowGroup
       .append("path")

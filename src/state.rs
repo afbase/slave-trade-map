@@ -207,23 +207,25 @@ impl AppState {
 
                                     // Re-render timeline
                                     let yearly_result = if mode_str == "regions" {
-                                        db.get_yearly_flows_to_region(dest_code, year_min, year_max, ds)
+                                        db.get_yearly_flows_to_region(
+                                            dest_code, year_min, year_max, ds,
+                                        )
                                     } else {
-                                        db.get_yearly_flows_to_port(dest_code, year_min, year_max, ds)
+                                        db.get_yearly_flows_to_port(
+                                            dest_code, year_min, year_max, ds,
+                                        )
                                     };
                                     match yearly_result {
-                                        Ok(yearly) => js_bridge::render_timeline(&yearly, year_min, year_max),
+                                        Ok(yearly) => {
+                                            js_bridge::render_timeline(&yearly, year_min, year_max)
+                                        }
                                         Err(_) => js_bridge::clear_timeline(),
                                     }
 
                                     let vr = if mode_str == "regions" {
-                                        db.get_voyages_for_region(
-                                            dest_code, year_min, year_max, ds,
-                                        )
+                                        db.get_voyages_for_region(dest_code, year_min, year_max, ds)
                                     } else {
-                                        db.get_voyages_for_port(
-                                            dest_code, year_min, year_max, ds,
-                                        )
+                                        db.get_voyages_for_port(dest_code, year_min, year_max, ds)
                                     };
                                     self.voyage_data.set(vr.unwrap_or_default());
                                 }

@@ -273,7 +273,12 @@ impl Database {
         Ok(())
     }
 
-    fn load_voyages_table(conn: &Connection, csv_data: &str, table: &str, has_vid2: bool) -> anyhow::Result<()> {
+    fn load_voyages_table(
+        conn: &Connection,
+        csv_data: &str,
+        table: &str,
+        has_vid2: bool,
+    ) -> anyhow::Result<()> {
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(true)
             .flexible(true)
@@ -378,9 +383,8 @@ impl Database {
             }
         };
         let mut stmt = conn.prepare(sql)?;
-        let (min, max) = stmt.query_row([], |row| {
-            Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?))
-        })?;
+        let (min, max) =
+            stmt.query_row([], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)))?;
         Ok((min, max))
     }
 
@@ -612,15 +616,39 @@ impl Database {
     ) -> anyhow::Result<Vec<FlowData>> {
         let conn = self.conn.borrow();
         match mode {
-            DatasetMode::Transatlantic => {
-                Self::query_flows_region(&conn, "region_flows", "transatlantic", dest, year_min, year_max)
-            }
-            DatasetMode::InterAmerican => {
-                Self::query_flows_region(&conn, "iam_region_flows", "interamerican", dest, year_min, year_max)
-            }
+            DatasetMode::Transatlantic => Self::query_flows_region(
+                &conn,
+                "region_flows",
+                "transatlantic",
+                dest,
+                year_min,
+                year_max,
+            ),
+            DatasetMode::InterAmerican => Self::query_flows_region(
+                &conn,
+                "iam_region_flows",
+                "interamerican",
+                dest,
+                year_min,
+                year_max,
+            ),
             DatasetMode::Combined => {
-                let mut ta = Self::query_flows_region(&conn, "region_flows", "transatlantic", dest, year_min, year_max)?;
-                let iam = Self::query_flows_region(&conn, "iam_region_flows", "interamerican", dest, year_min, year_max)?;
+                let mut ta = Self::query_flows_region(
+                    &conn,
+                    "region_flows",
+                    "transatlantic",
+                    dest,
+                    year_min,
+                    year_max,
+                )?;
+                let iam = Self::query_flows_region(
+                    &conn,
+                    "iam_region_flows",
+                    "interamerican",
+                    dest,
+                    year_min,
+                    year_max,
+                )?;
                 ta.extend(iam);
                 Ok(ta)
             }
@@ -682,15 +710,39 @@ impl Database {
     ) -> anyhow::Result<Vec<FlowData>> {
         let conn = self.conn.borrow();
         match mode {
-            DatasetMode::Transatlantic => {
-                Self::query_flows_port(&conn, "port_flows", "transatlantic", dest, year_min, year_max)
-            }
-            DatasetMode::InterAmerican => {
-                Self::query_flows_port(&conn, "iam_port_flows", "interamerican", dest, year_min, year_max)
-            }
+            DatasetMode::Transatlantic => Self::query_flows_port(
+                &conn,
+                "port_flows",
+                "transatlantic",
+                dest,
+                year_min,
+                year_max,
+            ),
+            DatasetMode::InterAmerican => Self::query_flows_port(
+                &conn,
+                "iam_port_flows",
+                "interamerican",
+                dest,
+                year_min,
+                year_max,
+            ),
             DatasetMode::Combined => {
-                let mut ta = Self::query_flows_port(&conn, "port_flows", "transatlantic", dest, year_min, year_max)?;
-                let iam = Self::query_flows_port(&conn, "iam_port_flows", "interamerican", dest, year_min, year_max)?;
+                let mut ta = Self::query_flows_port(
+                    &conn,
+                    "port_flows",
+                    "transatlantic",
+                    dest,
+                    year_min,
+                    year_max,
+                )?;
+                let iam = Self::query_flows_port(
+                    &conn,
+                    "iam_port_flows",
+                    "interamerican",
+                    dest,
+                    year_min,
+                    year_max,
+                )?;
                 ta.extend(iam);
                 Ok(ta)
             }
@@ -752,15 +804,39 @@ impl Database {
     ) -> anyhow::Result<Vec<YearlySourceFlow>> {
         let conn = self.conn.borrow();
         match mode {
-            DatasetMode::Transatlantic => {
-                Self::query_yearly_region(&conn, "region_flows", "transatlantic", dest, year_min, year_max)
-            }
-            DatasetMode::InterAmerican => {
-                Self::query_yearly_region(&conn, "iam_region_flows", "interamerican", dest, year_min, year_max)
-            }
+            DatasetMode::Transatlantic => Self::query_yearly_region(
+                &conn,
+                "region_flows",
+                "transatlantic",
+                dest,
+                year_min,
+                year_max,
+            ),
+            DatasetMode::InterAmerican => Self::query_yearly_region(
+                &conn,
+                "iam_region_flows",
+                "interamerican",
+                dest,
+                year_min,
+                year_max,
+            ),
             DatasetMode::Combined => {
-                let mut ta = Self::query_yearly_region(&conn, "region_flows", "transatlantic", dest, year_min, year_max)?;
-                let iam = Self::query_yearly_region(&conn, "iam_region_flows", "interamerican", dest, year_min, year_max)?;
+                let mut ta = Self::query_yearly_region(
+                    &conn,
+                    "region_flows",
+                    "transatlantic",
+                    dest,
+                    year_min,
+                    year_max,
+                )?;
+                let iam = Self::query_yearly_region(
+                    &conn,
+                    "iam_region_flows",
+                    "interamerican",
+                    dest,
+                    year_min,
+                    year_max,
+                )?;
                 ta.extend(iam);
                 Ok(ta)
             }
@@ -810,15 +886,39 @@ impl Database {
     ) -> anyhow::Result<Vec<YearlySourceFlow>> {
         let conn = self.conn.borrow();
         match mode {
-            DatasetMode::Transatlantic => {
-                Self::query_yearly_port(&conn, "port_flows", "transatlantic", dest, year_min, year_max)
-            }
-            DatasetMode::InterAmerican => {
-                Self::query_yearly_port(&conn, "iam_port_flows", "interamerican", dest, year_min, year_max)
-            }
+            DatasetMode::Transatlantic => Self::query_yearly_port(
+                &conn,
+                "port_flows",
+                "transatlantic",
+                dest,
+                year_min,
+                year_max,
+            ),
+            DatasetMode::InterAmerican => Self::query_yearly_port(
+                &conn,
+                "iam_port_flows",
+                "interamerican",
+                dest,
+                year_min,
+                year_max,
+            ),
             DatasetMode::Combined => {
-                let mut ta = Self::query_yearly_port(&conn, "port_flows", "transatlantic", dest, year_min, year_max)?;
-                let iam = Self::query_yearly_port(&conn, "iam_port_flows", "interamerican", dest, year_min, year_max)?;
+                let mut ta = Self::query_yearly_port(
+                    &conn,
+                    "port_flows",
+                    "transatlantic",
+                    dest,
+                    year_min,
+                    year_max,
+                )?;
+                let iam = Self::query_yearly_port(
+                    &conn,
+                    "iam_port_flows",
+                    "interamerican",
+                    dest,
+                    year_min,
+                    year_max,
+                )?;
                 ta.extend(iam);
                 Ok(ta)
             }
@@ -877,11 +977,19 @@ impl Database {
              LEFT JOIN geo_labels dp2 ON dp2.code = v.disembark_place2
              LEFT JOIN geo_labels dp3 ON dp3.code = v.disembark_place3",
             table = table,
-            vid2_col = if table == "iam_voyages" { ", v.voyage_id2" } else { "" },
+            vid2_col = if table == "iam_voyages" {
+                ", v.voyage_id2"
+            } else {
+                ""
+            },
         )
     }
 
-    fn row_to_voyage(row: &rusqlite::Row, dataset: &str, has_vid2: bool) -> rusqlite::Result<VoyageRecord> {
+    fn row_to_voyage(
+        row: &rusqlite::Row,
+        dataset: &str,
+        has_vid2: bool,
+    ) -> rusqlite::Result<VoyageRecord> {
         Ok(VoyageRecord {
             voyage_id: row.get(0)?,
             ship_name: row.get::<_, String>(1)?.trim().to_string(),
@@ -894,15 +1002,39 @@ impl Database {
             embarked: row.get(8)?,
             disembarked: row.get(9)?,
             deaths: row.get(10)?,
-            embark_port1_name: row.get::<_, Option<String>>(11)?.unwrap_or_default().trim().to_string(),
-            embark_port2_name: row.get::<_, Option<String>>(12)?.unwrap_or_default().trim().to_string(),
-            embark_port3_name: row.get::<_, Option<String>>(13)?.unwrap_or_default().trim().to_string(),
+            embark_port1_name: row
+                .get::<_, Option<String>>(11)?
+                .unwrap_or_default()
+                .trim()
+                .to_string(),
+            embark_port2_name: row
+                .get::<_, Option<String>>(12)?
+                .unwrap_or_default()
+                .trim()
+                .to_string(),
+            embark_port3_name: row
+                .get::<_, Option<String>>(13)?
+                .unwrap_or_default()
+                .trim()
+                .to_string(),
             embarked_port1: row.get(14)?,
             embarked_port2: row.get(15)?,
             embarked_port3: row.get(16)?,
-            disembark_place1_name: row.get::<_, Option<String>>(17)?.unwrap_or_default().trim().to_string(),
-            disembark_place2_name: row.get::<_, Option<String>>(18)?.unwrap_or_default().trim().to_string(),
-            disembark_place3_name: row.get::<_, Option<String>>(19)?.unwrap_or_default().trim().to_string(),
+            disembark_place1_name: row
+                .get::<_, Option<String>>(17)?
+                .unwrap_or_default()
+                .trim()
+                .to_string(),
+            disembark_place2_name: row
+                .get::<_, Option<String>>(18)?
+                .unwrap_or_default()
+                .trim()
+                .to_string(),
+            disembark_place3_name: row
+                .get::<_, Option<String>>(19)?
+                .unwrap_or_default()
+                .trim()
+                .to_string(),
             disembarked_place1: row.get(20)?,
             disembarked_place2: row.get(21)?,
             disembarked_place3: row.get(22)?,
@@ -1008,8 +1140,14 @@ mod tests {
     fn year_range_transatlantic() {
         let db = test_db();
         let (min, max) = db.get_year_range(DatasetMode::Transatlantic).unwrap();
-        assert!(min >= 1500 && min <= 1520, "TA min year {min} out of expected range");
-        assert!(max >= 1860 && max <= 1870, "TA max year {max} out of expected range");
+        assert!(
+            min >= 1500 && min <= 1520,
+            "TA min year {min} out of expected range"
+        );
+        assert!(
+            max >= 1860 && max <= 1870,
+            "TA max year {max} out of expected range"
+        );
         assert!(min < max);
     }
 
@@ -1017,8 +1155,14 @@ mod tests {
     fn year_range_interamerican() {
         let db = test_db();
         let (min, max) = db.get_year_range(DatasetMode::InterAmerican).unwrap();
-        assert!(min >= 1540 && min <= 1560, "IAm min year {min} out of expected range");
-        assert!(max >= 1835 && max <= 1845, "IAm max year {max} out of expected range");
+        assert!(
+            min >= 1540 && min <= 1560,
+            "IAm min year {min} out of expected range"
+        );
+        assert!(
+            max >= 1835 && max <= 1845,
+            "IAm max year {max} out of expected range"
+        );
         assert!(min < max);
     }
 
@@ -1039,7 +1183,10 @@ mod tests {
             .get_destination_regions(1500, 1900, DatasetMode::Transatlantic)
             .unwrap();
         assert!(!dests.is_empty(), "Should have destination regions");
-        assert!(dests[0].total_embarked > 0.0, "Top destination should have embarked > 0");
+        assert!(
+            dests[0].total_embarked > 0.0,
+            "Top destination should have embarked > 0"
+        );
     }
 
     #[test]
@@ -1061,7 +1208,10 @@ mod tests {
         let flows = db
             .get_flows_to_region(top_dest, 1500, 1900, DatasetMode::Transatlantic)
             .unwrap();
-        assert!(!flows.is_empty(), "Top destination should have origin flows");
+        assert!(
+            !flows.is_empty(),
+            "Top destination should have origin flows"
+        );
         for f in &flows {
             assert_eq!(f.dataset, "transatlantic");
             assert_eq!(f.target_code, top_dest);
@@ -1133,7 +1283,11 @@ mod tests {
     #[test]
     fn region_code_normalization_arithmetic() {
         let normalize = |c: i64| -> i64 {
-            if c % 100 != 0 { (c / 100) * 100 } else { c }
+            if c % 100 != 0 {
+                (c / 100) * 100
+            } else {
+                c
+            }
         };
 
         // Already a region code — should pass through unchanged
@@ -1143,7 +1297,11 @@ mod tests {
         assert_eq!(normalize(10000), 10000, "10000 stays 10000");
 
         // Port-like codes — should round down to parent region
-        assert_eq!(normalize(50311), 50300, "50311 → 50300 (the known bug case)");
+        assert_eq!(
+            normalize(50311),
+            50300,
+            "50311 → 50300 (the known bug case)"
+        );
         assert_eq!(normalize(50301), 50300, "50301 → 50300");
         assert_eq!(normalize(50399), 50300, "50399 → 50300");
         assert_eq!(normalize(31101), 31100, "31101 → 31100");
@@ -1172,7 +1330,8 @@ mod tests {
         assert!(!rows.is_empty(), "Should have TASTD region flow data");
         for code in &rows {
             assert_eq!(
-                code % 100, 0,
+                code % 100,
+                0,
                 "TASTD disembark_region {} is not a region-level code (should be multiple of 100)",
                 code
             );
@@ -1197,7 +1356,8 @@ mod tests {
         assert!(!rows.is_empty(), "Should have I-Am region flow data");
         for code in &rows {
             assert_eq!(
-                code % 100, 0,
+                code % 100,
+                0,
                 "I-Am disembark_region {} is not a region-level code (should be multiple of 100)",
                 code
             );
@@ -1218,7 +1378,10 @@ mod tests {
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(count_50311, 0, "Code 50311 should not exist in region_flows");
+        assert_eq!(
+            count_50311, 0,
+            "Code 50311 should not exist in region_flows"
+        );
 
         let count_50300: i64 = conn
             .query_row(
@@ -1227,7 +1390,10 @@ mod tests {
                 |row| row.get(0),
             )
             .unwrap();
-        assert!(count_50300 > 0, "Code 50300 (Pernambuco) should exist in region_flows");
+        assert!(
+            count_50300 > 0,
+            "Code 50300 (Pernambuco) should exist in region_flows"
+        );
     }
 
     /// Embark regions should also all be region-level codes (multiples of 100).
@@ -1247,7 +1413,8 @@ mod tests {
         assert!(!rows.is_empty());
         for code in &rows {
             assert_eq!(
-                code % 100, 0,
+                code % 100,
+                0,
                 "embark_region {} is not a region-level code",
                 code
             );

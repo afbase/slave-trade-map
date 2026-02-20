@@ -70,7 +70,12 @@ mod tests {
     fn fuzzy_prefix_match_beats_substring() {
         let prefix = fuzzy_score("Jam", "Jamaica").unwrap();
         let substr = fuzzy_score("aic", "Jamaica").unwrap();
-        assert!(prefix > substr, "prefix {} should beat substring {}", prefix, substr);
+        assert!(
+            prefix > substr,
+            "prefix {} should beat substring {}",
+            prefix,
+            substr
+        );
     }
 
     #[test]
@@ -92,8 +97,14 @@ mod tests {
 
     #[test]
     fn dataset_mode_parsing() {
-        assert_eq!(dataset_mode_from_str("transatlantic"), DatasetMode::Transatlantic);
-        assert_eq!(dataset_mode_from_str("interamerican"), DatasetMode::InterAmerican);
+        assert_eq!(
+            dataset_mode_from_str("transatlantic"),
+            DatasetMode::Transatlantic
+        );
+        assert_eq!(
+            dataset_mode_from_str("interamerican"),
+            DatasetMode::InterAmerican
+        );
         assert_eq!(dataset_mode_from_str("combined"), DatasetMode::Combined);
         assert_eq!(dataset_mode_from_str("unknown"), DatasetMode::Transatlantic);
     }

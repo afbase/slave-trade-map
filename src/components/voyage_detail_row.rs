@@ -31,9 +31,7 @@ pub fn VoyageDetailRow(voyage: VoyageRecord) -> Element {
             } else {
                 name.as_str()
             };
-            let c = count
-                .map(|c| format!(" ({})", c))
-                .unwrap_or_default();
+            let c = count.map(|c| format!(" ({})", c)).unwrap_or_default();
             Some(format!("{}{}", n, c))
         } else {
             None
@@ -41,10 +39,7 @@ pub fn VoyageDetailRow(voyage: VoyageRecord) -> Element {
     })
     .collect();
     if !embark_stops.is_empty() {
-        detail_lines.push(format!(
-            "Embark stops: {}",
-            embark_stops.join(" \u{2192} ")
-        ));
+        detail_lines.push(format!("Embark stops: {}", embark_stops.join(" \u{2192} ")));
     }
 
     let disembark_stops: Vec<String> = [
@@ -60,9 +55,7 @@ pub fn VoyageDetailRow(voyage: VoyageRecord) -> Element {
             } else {
                 name.as_str()
             };
-            let c = count
-                .map(|c| format!(" ({})", c))
-                .unwrap_or_default();
+            let c = count.map(|c| format!(" ({})", c)).unwrap_or_default();
             Some(format!("{}{}", n, c))
         } else {
             None

@@ -20,15 +20,31 @@ fn main() {
 
     let mut labels_out = String::from("variable,code,label\n");
     let needed_vars = [
-        "MAJBYIMP", "MJSELIMP", "MJSLPTIMP",
-        "PLAC1TRA", "PLAC2TRA", "PLAC3TRA",
-        "SLA1PORT", "ADPSALE1", "ADPSALE2",
-        "EMBPORT", "EMBPORT2", "ARRPORT", "ARRPORT2",
-        "MAJBUYPT", "MAJSELPT",
-        "DEPTREGIMP", "DEPTREGIMP1",
-        "REGARR", "REGARR2",
-        "REGDIS1", "REGDIS2", "REGDIS3",
-        "REGEM1", "REGEM2", "REGEM3",
+        "MAJBYIMP",
+        "MJSELIMP",
+        "MJSLPTIMP",
+        "PLAC1TRA",
+        "PLAC2TRA",
+        "PLAC3TRA",
+        "SLA1PORT",
+        "ADPSALE1",
+        "ADPSALE2",
+        "EMBPORT",
+        "EMBPORT2",
+        "ARRPORT",
+        "ARRPORT2",
+        "MAJBUYPT",
+        "MAJSELPT",
+        "DEPTREGIMP",
+        "DEPTREGIMP1",
+        "REGARR",
+        "REGARR2",
+        "REGDIS1",
+        "REGDIS2",
+        "REGDIS3",
+        "REGEM1",
+        "REGEM2",
+        "REGEM3",
     ];
 
     // Also collect deduplicated geo labels (code -> label) across all geo variables
@@ -55,7 +71,9 @@ fn main() {
                     labels_out.push_str(&format!("{},{},{}\n", variable, code_i, label));
                 }
                 // Collect into geo_labels (first label wins for a given code)
-                geo_labels.entry(code_i).or_insert_with(|| label.to_string());
+                geo_labels
+                    .entry(code_i)
+                    .or_insert_with(|| label.to_string());
             }
         }
     }
@@ -131,17 +149,14 @@ fn main() {
     }
 
     // ===== TRANSATLANTIC (TASTD) =====
-    let raw_data =
-        fs::read_to_string("tastdb-exp-2020-raw.csv").expect("Cannot read raw CSV");
+    let raw_data = fs::read_to_string("tastdb-exp-2020-raw.csv").expect("Cannot read raw CSV");
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(true)
         .flexible(true)
         .from_reader(raw_data.as_bytes());
 
     let headers = reader.headers().expect("no headers").clone();
-    let col = |name: &str| -> Option<usize> {
-        headers.iter().position(|h| h == name)
-    };
+    let col = |name: &str| -> Option<usize> { headers.iter().position(|h| h == name) };
     let idx_majbyimp = col("MAJBYIMP").expect("MAJBYIMP not found");
     let idx_mjselimp = col("MJSELIMP").expect("MJSELIMP not found");
     let idx_mjslptimp = col("MJSLPTIMP").expect("MJSLPTIMP not found");
@@ -190,11 +205,14 @@ fn main() {
             Some(c) => c,
             None => continue,
         };
-        let disembark_region = parse_code(record.get(idx_mjselimp).unwrap_or(""))
-            .map(|c| {
-                // Normalize port-like codes to parent region (e.g. 50311 → 50300)
-                if c % 100 != 0 { (c / 100) * 100 } else { c }
-            });
+        let disembark_region = parse_code(record.get(idx_mjselimp).unwrap_or("")).map(|c| {
+            // Normalize port-like codes to parent region (e.g. 50311 → 50300)
+            if c % 100 != 0 {
+                (c / 100) * 100
+            } else {
+                c
+            }
+        });
         let disembark_port = parse_code(record.get(idx_mjslptimp).unwrap_or(""));
         let year = match parse_code(record.get(idx_yearam).unwrap_or("")) {
             Some(y) => y,
@@ -204,18 +222,14 @@ fn main() {
         let disembarked = parse_float(record.get(idx_slamimp).unwrap_or(""));
 
         if let Some(dr) = disembark_region {
-            let entry = region_flows
-                .entry((embark_region, dr, year))
-                .or_default();
+            let entry = region_flows.entry((embark_region, dr, year)).or_default();
             entry.embarked += embarked;
             entry.disembarked += disembarked;
             entry.voyages += 1;
         }
 
         if let Some(dp) = disembark_port {
-            let entry = port_flows
-                .entry((embark_region, dp, year))
-                .or_default();
+            let entry = port_flows.entry((embark_region, dp, year)).or_default();
             entry.embarked += embarked;
             entry.disembarked += disembarked;
             entry.voyages += 1;
@@ -231,60 +245,110 @@ fn main() {
         let deaths_str = parse_code(get_str(&record, idx_vymrtimp))
             .map(|v| v.to_string())
             .unwrap_or_default();
-        let embarked_i = if embarked > 0.0 { format!("{}", embarked as i64) } else { String::new() };
-        let disembarked_i = if disembarked > 0.0 { format!("{}", disembarked as i64) } else { String::new() };
+        let embarked_i = if embarked > 0.0 {
+            format!("{}", embarked as i64)
+        } else {
+            String::new()
+        };
+        let disembarked_i = if disembarked > 0.0 {
+            format!("{}", disembarked as i64)
+        } else {
+            String::new()
+        };
 
-        let ep1 = parse_code(get_str(&record, idx_plac1tra)).map(|v| v.to_string()).unwrap_or_default();
-        let ep2 = parse_code(get_str(&record, idx_plac2tra)).map(|v| v.to_string()).unwrap_or_default();
-        let ep3 = parse_code(get_str(&record, idx_plac3tra)).map(|v| v.to_string()).unwrap_or_default();
-        let ne1 = parse_code(get_str(&record, idx_ncar13)).map(|v| v.to_string()).unwrap_or_default();
-        let ne2 = parse_code(get_str(&record, idx_ncar15)).map(|v| v.to_string()).unwrap_or_default();
-        let ne3 = parse_code(get_str(&record, idx_ncar17)).map(|v| v.to_string()).unwrap_or_default();
-        let dp1 = parse_code(get_str(&record, idx_sla1port)).map(|v| v.to_string()).unwrap_or_default();
-        let dp2 = parse_code(get_str(&record, idx_adpsale1)).map(|v| v.to_string()).unwrap_or_default();
-        let dp3 = parse_code(get_str(&record, idx_adpsale2)).map(|v| v.to_string()).unwrap_or_default();
-        let nd1 = parse_code(get_str(&record, idx_slas32)).map(|v| v.to_string()).unwrap_or_default();
-        let nd2 = parse_code(get_str(&record, idx_slas36)).map(|v| v.to_string()).unwrap_or_default();
-        let nd3 = parse_code(get_str(&record, idx_slas39)).map(|v| v.to_string()).unwrap_or_default();
+        let ep1 = parse_code(get_str(&record, idx_plac1tra))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let ep2 = parse_code(get_str(&record, idx_plac2tra))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let ep3 = parse_code(get_str(&record, idx_plac3tra))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let ne1 = parse_code(get_str(&record, idx_ncar13))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let ne2 = parse_code(get_str(&record, idx_ncar15))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let ne3 = parse_code(get_str(&record, idx_ncar17))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let dp1 = parse_code(get_str(&record, idx_sla1port))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let dp2 = parse_code(get_str(&record, idx_adpsale1))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let dp3 = parse_code(get_str(&record, idx_adpsale2))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let nd1 = parse_code(get_str(&record, idx_slas32))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let nd2 = parse_code(get_str(&record, idx_slas36))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let nd3 = parse_code(get_str(&record, idx_slas39))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
 
         voyages_csv.push_str(&format!(
             "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
-            voyage_id, ship_name, captain_a, captain_b, captain_c,
-            embark_region, dr_str, dp_str, year,
-            embarked_i, disembarked_i, deaths_str,
-            ep1, ep2, ep3, ne1, ne2, ne3,
-            dp1, dp2, dp3, nd1, nd2, nd3,
+            voyage_id,
+            ship_name,
+            captain_a,
+            captain_b,
+            captain_c,
+            embark_region,
+            dr_str,
+            dp_str,
+            year,
+            embarked_i,
+            disembarked_i,
+            deaths_str,
+            ep1,
+            ep2,
+            ep3,
+            ne1,
+            ne2,
+            ne3,
+            dp1,
+            dp2,
+            dp3,
+            nd1,
+            nd2,
+            nd3,
         ));
     }
 
     // Write TASTD files
-    let mut region_csv = String::from("embark_region,disembark_region,year,embarked,disembarked,voyages\n");
+    let mut region_csv =
+        String::from("embark_region,disembark_region,year,embarked,disembarked,voyages\n");
     let mut region_keys: Vec<_> = region_flows.keys().cloned().collect();
     region_keys.sort();
     for key in region_keys {
         let agg = &region_flows[&key];
         region_csv.push_str(&format!(
             "{},{},{},{},{},{}\n",
-            key.0, key.1, key.2,
-            agg.embarked as i64, agg.disembarked as i64, agg.voyages
+            key.0, key.1, key.2, agg.embarked as i64, agg.disembarked as i64, agg.voyages
         ));
     }
     fs::write(out_path.join("region_flows.csv"), &region_csv)
         .expect("Cannot write region_flows.csv");
 
-    let mut port_csv = String::from("embark_region,disembark_port,year,embarked,disembarked,voyages\n");
+    let mut port_csv =
+        String::from("embark_region,disembark_port,year,embarked,disembarked,voyages\n");
     let mut port_keys: Vec<_> = port_flows.keys().cloned().collect();
     port_keys.sort();
     for key in port_keys {
         let agg = &port_flows[&key];
         port_csv.push_str(&format!(
             "{},{},{},{},{},{}\n",
-            key.0, key.1, key.2,
-            agg.embarked as i64, agg.disembarked as i64, agg.voyages
+            key.0, key.1, key.2, agg.embarked as i64, agg.disembarked as i64, agg.voyages
         ));
     }
-    fs::write(out_path.join("port_flows.csv"), &port_csv)
-        .expect("Cannot write port_flows.csv");
+    fs::write(out_path.join("port_flows.csv"), &port_csv).expect("Cannot write port_flows.csv");
 
     fs::write(out_path.join("voyages.csv"), &voyages_csv).expect("Cannot write voyages.csv");
 
@@ -299,9 +363,7 @@ fn main() {
         .from_reader(iam_data.as_bytes());
 
     let iam_headers = iam_reader.headers().expect("no I-Am headers").clone();
-    let iam_col = |name: &str| -> Option<usize> {
-        iam_headers.iter().position(|h| h == name)
-    };
+    let iam_col = |name: &str| -> Option<usize> { iam_headers.iter().position(|h| h == name) };
 
     let iam_idx_voyageid = iam_col("voyageid").expect("I-Am voyageid not found");
     let iam_idx_yearam = iam_col("yearam").expect("I-Am yearam not found");
@@ -351,11 +413,14 @@ fn main() {
             Some(c) => c,
             None => continue,
         };
-        let disembark_region = parse_code(record.get(iam_idx_mjselimp).unwrap_or(""))
-            .map(|c| {
-                // Normalize port-like codes to parent region (e.g. 50311 → 50300)
-                if c % 100 != 0 { (c / 100) * 100 } else { c }
-            });
+        let disembark_region = parse_code(record.get(iam_idx_mjselimp).unwrap_or("")).map(|c| {
+            // Normalize port-like codes to parent region (e.g. 50311 → 50300)
+            if c % 100 != 0 {
+                (c / 100) * 100
+            } else {
+                c
+            }
+        });
         let disembark_port = parse_code(record.get(iam_idx_mjslptimp).unwrap_or(""));
         let year = match parse_code(record.get(iam_idx_yearam).unwrap_or("")) {
             Some(y) => y,
@@ -374,9 +439,7 @@ fn main() {
         }
 
         if let Some(dp) = disembark_port {
-            let entry = iam_port_flows
-                .entry((embark_region, dp, year))
-                .or_default();
+            let entry = iam_port_flows.entry((embark_region, dp, year)).or_default();
             entry.embarked += embarked;
             entry.disembarked += disembarked;
             entry.voyages += 1;
@@ -392,59 +455,108 @@ fn main() {
         let deaths_str = parse_code(get_str(&record, iam_idx_vymrtimp))
             .map(|v| v.to_string())
             .unwrap_or_default();
-        let embarked_i = if embarked > 0.0 { format!("{}", embarked as i64) } else { String::new() };
-        let disembarked_i = if disembarked > 0.0 { format!("{}", disembarked as i64) } else { String::new() };
+        let embarked_i = if embarked > 0.0 {
+            format!("{}", embarked as i64)
+        } else {
+            String::new()
+        };
+        let disembarked_i = if disembarked > 0.0 {
+            format!("{}", disembarked as i64)
+        } else {
+            String::new()
+        };
 
-        let ep1 = parse_code(get_str(&record, iam_idx_plac1tra)).map(|v| v.to_string()).unwrap_or_default();
-        let ep2 = parse_code(get_str(&record, iam_idx_plac2tra)).map(|v| v.to_string()).unwrap_or_default();
+        let ep1 = parse_code(get_str(&record, iam_idx_plac1tra))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let ep2 = parse_code(get_str(&record, iam_idx_plac2tra))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
         let ep3 = String::new(); // I-Am has no plac3tra
-        let ne1 = parse_code(get_str(&record, iam_idx_ncar13)).map(|v| v.to_string()).unwrap_or_default();
-        let ne2 = parse_code(get_str(&record, iam_idx_ncar15)).map(|v| v.to_string()).unwrap_or_default();
+        let ne1 = parse_code(get_str(&record, iam_idx_ncar13))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let ne2 = parse_code(get_str(&record, iam_idx_ncar15))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
         let ne3 = String::new(); // I-Am has no ncar17
-        let dp1 = parse_code(get_str(&record, iam_idx_sla1port)).map(|v| v.to_string()).unwrap_or_default();
-        let dp2 = parse_code(get_str(&record, iam_idx_adpsale1)).map(|v| v.to_string()).unwrap_or_default();
-        let dp3 = parse_code(get_str(&record, iam_idx_adpsale2)).map(|v| v.to_string()).unwrap_or_default();
-        let nd1 = parse_code(get_str(&record, iam_idx_slas32)).map(|v| v.to_string()).unwrap_or_default();
-        let nd2 = parse_code(get_str(&record, iam_idx_slas36)).map(|v| v.to_string()).unwrap_or_default();
-        let nd3 = parse_code(get_str(&record, iam_idx_slas39)).map(|v| v.to_string()).unwrap_or_default();
-        let vid2 = parse_code(get_str(&record, iam_idx_voyageid2)).map(|v| v.to_string()).unwrap_or_default();
+        let dp1 = parse_code(get_str(&record, iam_idx_sla1port))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let dp2 = parse_code(get_str(&record, iam_idx_adpsale1))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let dp3 = parse_code(get_str(&record, iam_idx_adpsale2))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let nd1 = parse_code(get_str(&record, iam_idx_slas32))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let nd2 = parse_code(get_str(&record, iam_idx_slas36))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let nd3 = parse_code(get_str(&record, iam_idx_slas39))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+        let vid2 = parse_code(get_str(&record, iam_idx_voyageid2))
+            .map(|v| v.to_string())
+            .unwrap_or_default();
 
         iam_voyages_csv.push_str(&format!(
             "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
-            voyage_id, ship_name, captain_a, captain_b, captain_c,
-            embark_region, dr_str, dp_str, year,
-            embarked_i, disembarked_i, deaths_str,
-            ep1, ep2, ep3, ne1, ne2, ne3,
-            dp1, dp2, dp3, nd1, nd2, nd3,
+            voyage_id,
+            ship_name,
+            captain_a,
+            captain_b,
+            captain_c,
+            embark_region,
+            dr_str,
+            dp_str,
+            year,
+            embarked_i,
+            disembarked_i,
+            deaths_str,
+            ep1,
+            ep2,
+            ep3,
+            ne1,
+            ne2,
+            ne3,
+            dp1,
+            dp2,
+            dp3,
+            nd1,
+            nd2,
+            nd3,
             vid2,
         ));
     }
 
     // Write I-Am region flows
-    let mut iam_region_csv = String::from("embark_region,disembark_region,year,embarked,disembarked,voyages\n");
+    let mut iam_region_csv =
+        String::from("embark_region,disembark_region,year,embarked,disembarked,voyages\n");
     let mut iam_region_keys: Vec<_> = iam_region_flows.keys().cloned().collect();
     iam_region_keys.sort();
     for key in iam_region_keys {
         let agg = &iam_region_flows[&key];
         iam_region_csv.push_str(&format!(
             "{},{},{},{},{},{}\n",
-            key.0, key.1, key.2,
-            agg.embarked as i64, agg.disembarked as i64, agg.voyages
+            key.0, key.1, key.2, agg.embarked as i64, agg.disembarked as i64, agg.voyages
         ));
     }
     fs::write(out_path.join("iam_region_flows.csv"), &iam_region_csv)
         .expect("Cannot write iam_region_flows.csv");
 
     // Write I-Am port flows
-    let mut iam_port_csv = String::from("embark_region,disembark_port,year,embarked,disembarked,voyages\n");
+    let mut iam_port_csv =
+        String::from("embark_region,disembark_port,year,embarked,disembarked,voyages\n");
     let mut iam_port_keys: Vec<_> = iam_port_flows.keys().cloned().collect();
     iam_port_keys.sort();
     for key in iam_port_keys {
         let agg = &iam_port_flows[&key];
         iam_port_csv.push_str(&format!(
             "{},{},{},{},{},{}\n",
-            key.0, key.1, key.2,
-            agg.embarked as i64, agg.disembarked as i64, agg.voyages
+            key.0, key.1, key.2, agg.embarked as i64, agg.disembarked as i64, agg.voyages
         ));
     }
     fs::write(out_path.join("iam_port_flows.csv"), &iam_port_csv)
@@ -456,7 +568,9 @@ fn main() {
 
     eprintln!(
         "build.rs: TASTD — {} region flows, {} port flows | I-Am — {} region flows, {} port flows",
-        region_flows.len(), port_flows.len(),
-        iam_region_flows.len(), iam_port_flows.len()
+        region_flows.len(),
+        port_flows.len(),
+        iam_region_flows.len(),
+        iam_port_flows.len()
     );
 }

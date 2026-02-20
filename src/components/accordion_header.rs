@@ -14,7 +14,10 @@ pub fn AccordionHeader(
 ) -> Element {
     let arrow = if is_open { "\u{25be}" } else { "\u{25b8}" };
     let v_plural = if voyage_count != 1 { "s" } else { "" };
-    let header_stats = format!(" ({} voyage{}, {} enslaved)", voyage_count, v_plural, embarked);
+    let header_stats = format!(
+        " ({} voyage{}, {} enslaved)",
+        voyage_count, v_plural, embarked
+    );
 
     rsx! {
         div {

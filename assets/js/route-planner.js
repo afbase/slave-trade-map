@@ -335,8 +335,16 @@ function computeDynamicWaypoints(sourceCode, destCode, convergePt) {
   var cacheKey = sourceCode + ":" + destCode + ":" + Math.round(convergePt[0]) + ":" + Math.round(convergePt[1]);
   if (_waypointCache[cacheKey]) return _waypointCache[cacheKey];
 
-  var destQuadrant = classifyDestQuadrant(destCode);
-  var chain = buildWaypointChain(sourceCode, destQuadrant);
+  // Prefer Rust classify_dest_quadrant if available
+  var destQuadrant = (typeof window.classify_dest_quadrant === 'function')
+      ? window.classify_dest_quadrant(destCode)
+      : classifyDestQuadrant(destCode);
+
+  // Prefer Rust build_waypoint_chain if available
+  var chainJson = (typeof window.build_waypoint_chain === 'function')
+      ? window.build_waypoint_chain(sourceCode, destQuadrant)
+      : null;
+  var chain = chainJson ? JSON.parse(chainJson) : buildWaypointChain(sourceCode, destQuadrant);
   if (!chain || chain.length === 0) return null;
 
   // Land avoidance pass
@@ -663,10 +671,23 @@ function computeRibbonStems(stemInfos, convergePt, destCode) {
   var spinePoints = computeSpine(stemInfos, convergePt, destCode);
   if (!spinePoints || spinePoints.length < 2) return;
 
-  // Step 2: Arc-length reparameterize
+  // Step 2: Arc-length reparameterize (prefer Rust for numeric accuracy)
   var NUM_SAMPLES = 80;
-  var spineSamples = arcLengthReparameterize(spinePoints, NUM_SAMPLES);
-  var frame = computeFrenetFrame(spineSamples);
+  var spineSamples;
+  try {
+    spineSamples = (typeof window.arc_length_reparameterize === 'function')
+      ? JSON.parse(window.arc_length_reparameterize(JSON.stringify(spinePoints), NUM_SAMPLES))
+      : null;
+  } catch(e) { spineSamples = null; }
+  spineSamples = spineSamples || arcLengthReparameterize(spinePoints, NUM_SAMPLES);
+
+  var frame;
+  try {
+    frame = (typeof window.compute_frenet_frame === 'function')
+      ? JSON.parse(window.compute_frenet_frame(JSON.stringify(spineSamples)))
+      : null;
+  } catch(e) { frame = null; }
+  frame = frame || computeFrenetFrame(spineSamples);
 
   // Step 3: Determine offset sign so offsets match source spread direction
   var firstSrc = groupA[0].srcPt;

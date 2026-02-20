@@ -1,9 +1,12 @@
 // For ports, fall back to parent region centroid (first 3 digits * 100)
 function getCoords(code) {
+  var c = window.__coords;
+  if (c) {
+    if (c[code]) return c[code];
+    return c[Math.floor(code / 100) * 100] || null;
+  }
   if (regionCoords[code]) return regionCoords[code];
-  var parent = Math.floor(code / 100) * 100;
-  if (regionCoords[parent]) return regionCoords[parent];
-  return null;
+  return regionCoords[Math.floor(code / 100) * 100] || null;
 }
 
 function generateArc(source, target, curveBias) {
@@ -103,11 +106,13 @@ function generateRoutedPath(sourceCode, srcPt, convergePt, destCode) {
         }
       }
       allPoints.push(convergePt);
-      return generateMultiSegmentPath(allPoints);
+      return _multiSegPath(allPoints);
     }
   }
-  // Fallback to static waypoints
-  var waypoints = routeWaypoints[sourceCode];
+  // Prefer Rust static waypoints
+  var waypoints = (window.__waypoints && window.__waypoints[sourceCode])
+    ? window.__waypoints[sourceCode]
+    : routeWaypoints[sourceCode];
   if (waypoints) {
     var allPoints = [srcPt];
     for (var i = 0; i < waypoints.length; i++) {
@@ -117,9 +122,18 @@ function generateRoutedPath(sourceCode, srcPt, convergePt, destCode) {
       }
     }
     allPoints.push(convergePt);
-    return generateMultiSegmentPath(allPoints);
+    return _multiSegPath(allPoints);
   }
-  return generateArc(srcPt, convergePt);
+  return (typeof window.generate_arc === 'function')
+    ? window.generate_arc(srcPt[0], srcPt[1], convergePt[0], convergePt[1], "")
+    : generateArc(srcPt, convergePt);
+
+  function _multiSegPath(pts) {
+    if (typeof window.generate_multi_segment_path === 'function') {
+      return window.generate_multi_segment_path(JSON.stringify(pts)) || null;
+    }
+    return generateMultiSegmentPath(pts);
+  }
 }
 
 function drawArrowhead(group, arcPath, strokeWidth, color) {

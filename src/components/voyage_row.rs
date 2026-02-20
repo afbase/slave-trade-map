@@ -6,10 +6,7 @@ use dioxus::prelude::*;
 use std::collections::HashSet;
 
 #[component]
-pub fn VoyageRow(
-    voyage: VoyageRecord,
-    mut expanded_voyages: Signal<HashSet<i64>>,
-) -> Element {
+pub fn VoyageRow(voyage: VoyageRecord, mut expanded_voyages: Signal<HashSet<i64>>) -> Element {
     let vid = voyage.voyage_id;
     let ship = if voyage.ship_name.is_empty() {
         "Unknown".to_string()

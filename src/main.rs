@@ -5,10 +5,14 @@
 
 mod components;
 mod db;
+mod geo;
+mod geometry;
 mod js_bridge;
 mod models;
+mod routing;
 mod state;
 mod utils;
+mod wasm_exports;
 
 use components::{AboutTab, HeaderBar, InfoPanel, TimeSlider, VoyageDetails};
 use db::Database;
@@ -34,6 +38,7 @@ const CSS_UTILITY: Asset = asset!("/assets/css/utility.css");
 
 fn main() {
     dioxus_logger::init(dioxus_logger::tracing::Level::INFO).expect("failed to init logger");
+    wasm_exports::init_window_globals();
     dioxus::LaunchBuilder::new()
         .with_cfg(dioxus::web::Config::new().rootname("main"))
         .launch(App);
@@ -44,26 +49,25 @@ fn App() -> Element {
     let mut state = use_context_provider(AppState::new);
 
     // Initialize database on mount
-    use_effect(move || {
-        match Database::new() {
-            Ok(db) => {
-                if let Ok((min, max)) = db.get_year_range(DatasetMode::Transatlantic) {
-                    state.year_range.set((min, max));
-                    state.current_min.set(min);
-                    state.current_max.set(max);
-                    if let Ok(dests) =
-                        db.get_destination_regions(min, max, DatasetMode::Transatlantic)
-                    {
-                        state.destinations.set(dests);
-                    }
+    use_effect(move || match Database::new() {
+        Ok(db) => {
+            if let Ok((min, max)) = db.get_year_range(DatasetMode::Transatlantic) {
+                state.year_range.set((min, max));
+                state.current_min.set(min);
+                state.current_max.set(max);
+                if let Ok(dests) = db.get_destination_regions(min, max, DatasetMode::Transatlantic)
+                {
+                    state.destinations.set(dests);
                 }
-                state.db.set(Some(db));
-                state.loading.set(false);
             }
-            Err(e) => {
-                state.error_msg.set(Some(format!("Database init failed: {}", e)));
-                state.loading.set(false);
-            }
+            state.db.set(Some(db));
+            state.loading.set(false);
+        }
+        Err(e) => {
+            state
+                .error_msg
+                .set(Some(format!("Database init failed: {}", e)));
+            state.loading.set(false);
         }
     });
 

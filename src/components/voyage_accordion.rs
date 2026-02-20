@@ -50,8 +50,8 @@ pub fn VoyageAccordion(
     mut expanded_voyages: Signal<HashSet<i64>>,
 ) -> Element {
     let mut sort_state: Signal<HashMap<i64, (SortColumn, SortDirection)>> =
-        use_signal(|| HashMap::new());
-    let mut origin_search: Signal<HashMap<i64, String>> = use_signal(|| HashMap::new());
+        use_signal(HashMap::new);
+    let mut origin_search: Signal<HashMap<i64, String>> = use_signal(HashMap::new);
 
     let mut origin_order: Vec<i64> = Vec::new();
     let mut origin_names: HashMap<i64, String> = HashMap::new();

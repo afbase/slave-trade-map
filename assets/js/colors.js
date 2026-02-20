@@ -52,14 +52,16 @@ var americanColors = {
 // Get source color based on code and dataset
 function getSourceColor(code, dataset) {
   if (dataset === "transatlantic") {
-    if (africanColors[code]) return africanColors[code];
+    var src = window.__africanColors || africanColors;
+    if (src[code]) return src[code];
     var parent = Math.floor(code / 100) * 100;
-    if (africanColors[parent]) return africanColors[parent];
-    return "#8a7848"; // default warm
+    if (src[parent]) return src[parent];
+    return "#8a7848";
   } else {
-    if (americanColors[code]) return americanColors[code];
+    var src = window.__americanColors || americanColors;
+    if (src[code]) return src[code];
     var parent = Math.floor(code / 100) * 100;
-    if (americanColors[parent]) return americanColors[parent];
-    return "#4a7090"; // default cool
+    if (src[parent]) return src[parent];
+    return "#4a7090";
   }
 }
