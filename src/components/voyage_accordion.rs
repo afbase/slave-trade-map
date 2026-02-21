@@ -2,7 +2,7 @@
 
 use crate::components::{AccordionHeader, FuzzySearchInput, VoyageRow};
 use crate::models::VoyageRecord;
-use crate::utils::fuzzy_score;
+use crate::utils::{deaths_value, fuzzy_score};
 use dioxus::prelude::*;
 use std::collections::{HashMap, HashSet};
 
@@ -31,14 +31,6 @@ fn sort_indicator(col: SortColumn, active: Option<(SortColumn, SortDirection)>) 
     rsx! {
         span { class: up_class, "\u{25b4}" }
         span { class: down_class, "\u{25be}" }
-    }
-}
-
-fn deaths_value(v: &VoyageRecord) -> Option<i64> {
-    match (v.embarked, v.disembarked) {
-        (Some(e), Some(d)) if e > d => Some(e - d),
-        (Some(_), Some(_)) => Some(0),
-        _ => None,
     }
 }
 
@@ -113,7 +105,7 @@ pub fn VoyageAccordion(
                                 SortColumn::Year => a.year_arrived.cmp(&b.year_arrived),
                                 SortColumn::Embarked => a.embarked.cmp(&b.embarked),
                                 SortColumn::Disembarked => a.disembarked.cmp(&b.disembarked),
-                                SortColumn::Deaths => deaths_value(a).cmp(&deaths_value(b)),
+                                SortColumn::Deaths => deaths_value(a.embarked, a.disembarked).cmp(&deaths_value(b.embarked, b.disembarked)),
                             };
                             match dir {
                                 SortDirection::Asc => ord,

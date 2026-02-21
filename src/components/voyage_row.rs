@@ -2,6 +2,7 @@
 
 use crate::components::VoyageDetailRow;
 use crate::models::VoyageRecord;
+use crate::utils::{deaths_value, opt_str};
 use dioxus::prelude::*;
 use std::collections::HashSet;
 
@@ -18,23 +19,10 @@ pub fn VoyageRow(voyage: VoyageRecord, mut expanded_voyages: Signal<HashSet<i64>
     } else {
         "Unknown".to_string()
     };
-    let year_str = voyage
-        .year_arrived
-        .map(|y| y.to_string())
-        .unwrap_or("-".to_string());
-    let emb_str = voyage
-        .embarked
-        .map(|e| format!("{}", e))
-        .unwrap_or("-".to_string());
-    let dis_str = voyage
-        .disembarked
-        .map(|d| format!("{}", d))
-        .unwrap_or("-".to_string());
-    let death_str = match (voyage.embarked, voyage.disembarked) {
-        (Some(e), Some(d)) if e > d => format!("{}", e - d),
-        (Some(_), Some(_)) => "0".to_string(),
-        _ => "-".to_string(),
-    };
+    let year_str = opt_str(voyage.year_arrived);
+    let emb_str = opt_str(voyage.embarked);
+    let dis_str = opt_str(voyage.disembarked);
+    let death_str = opt_str(deaths_value(voyage.embarked, voyage.disembarked));
     let is_expanded = expanded_voyages.read().contains(&vid);
     let has_detail = voyage.embarked_port1.is_some()
         || voyage.embarked_port2.is_some()

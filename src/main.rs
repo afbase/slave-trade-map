@@ -91,6 +91,7 @@ fn App() -> Element {
     };
 
     rsx! {
+        document::Meta { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=5" }
         document::Stylesheet { href: CSS_VARIABLES }
         document::Stylesheet { href: CSS_RESET }
         document::Stylesheet { href: CSS_LAYOUT }

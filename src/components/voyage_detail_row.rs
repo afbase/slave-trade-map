@@ -3,6 +3,21 @@
 use crate::models::VoyageRecord;
 use dioxus::prelude::*;
 
+fn format_stops(slots: &[(&str, Option<i64>)], unknown_label: &str) -> Vec<String> {
+    slots
+        .iter()
+        .filter_map(|(name, count)| {
+            if !name.is_empty() || count.is_some() {
+                let n = if name.is_empty() { unknown_label } else { name };
+                let c = count.map(|c| format!(" ({})", c)).unwrap_or_default();
+                Some(format!("{}{}", n, c))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 #[component]
 pub fn VoyageDetailRow(voyage: VoyageRecord) -> Element {
     let mut detail_lines: Vec<String> = Vec::new();
@@ -18,50 +33,35 @@ pub fn VoyageDetailRow(voyage: VoyageRecord) -> Element {
         detail_lines.push(format!("Captains: {}", caps.join(", ")));
     }
 
-    let embark_stops: Vec<String> = [
-        (&voyage.embark_port1_name, &voyage.embarked_port1),
-        (&voyage.embark_port2_name, &voyage.embarked_port2),
-        (&voyage.embark_port3_name, &voyage.embarked_port3),
-    ]
-    .iter()
-    .filter_map(|(name, count)| {
-        if !name.is_empty() || count.is_some() {
-            let n = if name.is_empty() {
-                "Unknown port"
-            } else {
-                name.as_str()
-            };
-            let c = count.map(|c| format!(" ({})", c)).unwrap_or_default();
-            Some(format!("{}{}", n, c))
-        } else {
-            None
-        }
-    })
-    .collect();
+    let embark_stops = format_stops(
+        &[
+            (voyage.embark_port1_name.as_str(), voyage.embarked_port1),
+            (voyage.embark_port2_name.as_str(), voyage.embarked_port2),
+            (voyage.embark_port3_name.as_str(), voyage.embarked_port3),
+        ],
+        "Unknown port",
+    );
     if !embark_stops.is_empty() {
         detail_lines.push(format!("Embark stops: {}", embark_stops.join(" \u{2192} ")));
     }
 
-    let disembark_stops: Vec<String> = [
-        (&voyage.disembark_place1_name, &voyage.disembarked_place1),
-        (&voyage.disembark_place2_name, &voyage.disembarked_place2),
-        (&voyage.disembark_place3_name, &voyage.disembarked_place3),
-    ]
-    .iter()
-    .filter_map(|(name, count)| {
-        if !name.is_empty() || count.is_some() {
-            let n = if name.is_empty() {
-                "Unknown place"
-            } else {
-                name.as_str()
-            };
-            let c = count.map(|c| format!(" ({})", c)).unwrap_or_default();
-            Some(format!("{}{}", n, c))
-        } else {
-            None
-        }
-    })
-    .collect();
+    let disembark_stops = format_stops(
+        &[
+            (
+                voyage.disembark_place1_name.as_str(),
+                voyage.disembarked_place1,
+            ),
+            (
+                voyage.disembark_place2_name.as_str(),
+                voyage.disembarked_place2,
+            ),
+            (
+                voyage.disembark_place3_name.as_str(),
+                voyage.disembarked_place3,
+            ),
+        ],
+        "Unknown place",
+    );
     if !disembark_stops.is_empty() {
         detail_lines.push(format!(
             "Disembark stops: {}",

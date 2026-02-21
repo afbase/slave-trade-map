@@ -125,3 +125,14 @@
 .data-table tr.tl-bar-hover td {
   background: var(--color-bg-hover);
 }
+
+@media (max-width: 768px) {
+  .accordion-body {
+    overflow-x: auto;
+    padding-left: 4px;
+  }
+
+  .voyage-details-area {
+    max-height: 60vh;
+  }
+}

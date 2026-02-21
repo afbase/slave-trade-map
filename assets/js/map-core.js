@@ -9,14 +9,16 @@ var _labelVisTimeout;
 window.mapReady = false;
 
 function initMap() {
-  _width = 1200;
-  _height = 620;
-
   var container = document.getElementById("map-container");
   if (!container) {
     console.error("map-container not found");
     return;
   }
+
+  var containerWidth = container.getBoundingClientRect().width || 800;
+  var isMobile = containerWidth < 600;
+  _width = 1200;
+  _height = isMobile ? 800 : 620;
 
   // Clear any previous
   container.querySelectorAll("svg").forEach(function(s) { s.remove(); });
@@ -54,8 +56,8 @@ function initMap() {
   _projection = d3
     .geoNaturalEarth1()
     .center([-15, 5])
-    .scale(210)
-    .translate([_width / 2, _height / 2 + 10]);
+    .scale(isMobile ? 230 : 210)
+    .translate([_width / 2, _height / 2 + (isMobile ? 20 : 10)]);
 
   _path = d3.geoPath().projection(_projection);
 
@@ -153,6 +155,11 @@ function initMap() {
         .each(function() {
           var baseR = +this.getAttribute("data-base-r") || 3.5;
           d3.select(this).attr("r", baseR / sk).attr("stroke-width", 1 / k);
+        });
+      _masterGroup.selectAll(".dest-dot-hitarea")
+        .each(function() {
+          var baseR = +this.getAttribute("data-base-r") || 12;
+          d3.select(this).attr("r", baseR / sk);
         });
       _masterGroup.selectAll(".flow-path")
         .each(function() {

@@ -5,7 +5,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn LabeledToggle(
     label: &'static str,
-    options: Vec<(&'static str, &'static str)>,  // (value_key, display_text)
+    options: Vec<(&'static str, &'static str)>, // (value_key, display_text)
     active: String,
     on_change: EventHandler<String>,
 ) -> Element {

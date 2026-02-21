@@ -298,6 +298,41 @@ function updateMapTheme() {
     clearFlowRowTransientHighlight();
     clearAccordionHeaderHighlight();
   });
+
+  // --- Direction 4: Accordion header hover → tl-bars + FlowTable rows + stem ---
+
+  document.addEventListener('mouseover', function(e) {
+    var hdr = e.target.closest && e.target.closest('.accordion-header[data-origin-code]');
+    if (!hdr) return;
+    var code = hdr.getAttribute('data-origin-code');
+    if (!code) return;
+    // Dim all tl-bars, brighten matching source (across all datasets)
+    d3.selectAll('.tl-bar').attr('opacity', 0.2);
+    d3.selectAll('.tl-bar[data-source-code="' + code + '"]').attr('opacity', 1);
+    // Highlight matching flow table rows transiently
+    clearFlowRowTransientHighlight();
+    document.querySelectorAll('.data-table tr[data-source-code="' + code + '"]')
+      .forEach(function(r) { r.classList.add('tl-bar-hover'); });
+    // Highlight matching stems (all datasets)
+    highlightStemByCode(code);
+  });
+
+  document.addEventListener('mouseout', function(e) {
+    var hdr = e.target.closest && e.target.closest('.accordion-header[data-origin-code]');
+    if (!hdr) return;
+    // Ignore mouse movement between child elements of the same header
+    if (hdr.contains(e.relatedTarget)) return;
+    clearFlowRowTransientHighlight();
+    if (!_rowHoverActive) {
+      restoreBarHighlight();
+      var openCodes = getOpenAccordionCodes();
+      if (openCodes.length === 1) {
+        highlightStemByCode(openCodes[0]);
+      } else {
+        restoreStemsAndTrunk();
+      }
+    }
+  });
 })();
 
 // Expose functions globally

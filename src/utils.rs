@@ -42,6 +42,21 @@ pub fn fuzzy_score(query: &str, target: &str) -> Option<i32> {
     }
 }
 
+/// Format an `Option<T>` as a string, falling back to `"-"` when `None`.
+pub fn opt_str(v: Option<impl ToString>) -> String {
+    v.map(|x| x.to_string()).unwrap_or_else(|| "-".to_string())
+}
+
+/// Compute deaths on a voyage: `embarked - disembarked` when positive, `0` when
+/// disembarked ≥ embarked, `None` when either value is missing.
+pub fn deaths_value(embarked: Option<i64>, disembarked: Option<i64>) -> Option<i64> {
+    match (embarked, disembarked) {
+        (Some(e), Some(d)) if e > d => Some(e - d),
+        (Some(_), Some(_)) => Some(0),
+        _ => None,
+    }
+}
+
 /// Parse a dataset mode string ("transatlantic", "interamerican", "combined") into `DatasetMode`.
 pub fn dataset_mode_from_str(s: &str) -> DatasetMode {
     match s {

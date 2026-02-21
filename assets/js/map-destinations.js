@@ -92,6 +92,50 @@ function renderDestinations(destinationsJson, mode) {
       .on("mouseout", function() {
         _tooltipDiv.style.opacity = "0";
       });
+
+    // Invisible hit-area circle for easier touch targeting
+    var hitR = Math.max(r * 2.5, 12);
+    _dotsGroup
+      .append("circle")
+      .attr("class", "dest-dot-hitarea")
+      .attr("cx", x)
+      .attr("cy", y)
+      .attr("r", hitR / currentSK)
+      .attr("data-base-r", hitR)
+      .attr("fill", "transparent")
+      .style("cursor", "pointer")
+      .on("click", function() {
+        var el = document.getElementById("dest-click-receiver");
+        if (el) {
+          var nativeSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, "value"
+          ).set;
+          nativeSetter.call(el, String(dest.code));
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      })
+      .on("touchstart", function(event) {
+        _tooltipDiv.style.opacity = "1";
+        var statsHtml =
+          "<strong>" + Math.round(dest.total_embarked).toLocaleString() + "</strong> enslaved persons<br>" +
+          "<strong>" + dest.voyage_count.toLocaleString() + "</strong> voyages";
+        if (dest.ta_embarked > 0 && dest.iam_embarked > 0) {
+          statsHtml += '<br><span style="color:#8a6828">TASTD: ' + Math.round(dest.ta_embarked).toLocaleString() + "</span>";
+          statsHtml += ' · <span style="color:#2a6a7a">IAm: ' + Math.round(dest.iam_embarked).toLocaleString() + "</span>";
+        }
+        _tooltipDiv.innerHTML =
+          '<div class="tt-route">' + dest.name + "</div>" +
+          '<div class="tt-stat">' + statsHtml + "</div>";
+        if (event.touches && event.touches.length > 0) {
+          var touch = event.touches[0];
+          var rect = document.getElementById("map-container").getBoundingClientRect();
+          _tooltipDiv.style.left = (touch.clientX - rect.left + 16) + "px";
+          _tooltipDiv.style.top = Math.max(0, touch.clientY - rect.top - 50) + "px";
+        }
+      })
+      .on("touchend", function() {
+        setTimeout(function() { _tooltipDiv.style.opacity = "0"; }, 1500);
+      });
   });
 
   // Pass 2: render labels with collision detection, most important first
