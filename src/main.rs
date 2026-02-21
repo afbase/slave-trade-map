@@ -126,7 +126,7 @@ fn App() -> Element {
                 div { class: "loading", "Loading database..." }
             } else {
                 div {
-                    style: if (state.show_about)() { "display: none" } else { "" },
+                    style: if (state.show_about)() { "display: none" } else { "display: block" },
                     div { class: "main-content",
                         div { class: "map-area",
                             div { id: "map-container" }

@@ -16,7 +16,10 @@ pub fn DatasetToggle() -> Element {
                 ("combined", "Combined"),
             ],
             active: (state.dataset_mode)(),
-            on_change: move |val: String| state.set_dataset_mode(&val),
+            on_change: move |val: String| {
+                state.show_about.set(false);
+                state.set_dataset_mode(&val);
+            },
         }
     }
 }

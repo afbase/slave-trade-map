@@ -15,7 +15,10 @@ pub fn ModeToggle() -> Element {
                 ("ports", "Ports"),
             ],
             active: (state.mode)(),
-            on_change: move |val: String| state.set_mode(&val),
+            on_change: move |val: String| {
+                state.show_about.set(false);
+                state.set_mode(&val);
+            },
         }
     }
 }
