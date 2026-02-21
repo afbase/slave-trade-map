@@ -32,13 +32,16 @@ pub fn HeaderBar() -> Element {
             DatasetToggle {}
             ModeToggle {}
             // About toggle
-            button {
-                class: if (state.show_about)() { "about-btn active" } else { "about-btn" },
-                onclick: move |_| {
-                    let cur = *state.show_about.peek();
-                    state.show_about.set(!cur);
-                },
-                "About"
+            div { class: "toggle-labeled",
+                span { class: "toggle-label", "Info" }
+                button {
+                    class: if (state.show_about)() { "about-btn active" } else { "about-btn" },
+                    onclick: move |_| {
+                        let cur = *state.show_about.peek();
+                        state.show_about.set(!cur);
+                    },
+                    "About"
+                }
             }
         }
     }

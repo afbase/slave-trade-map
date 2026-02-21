@@ -55,3 +55,20 @@
   color: var(--color-on-accent);
   border-color: var(--color-accent-dark);
 }
+
+/* Labeled toggle wrapper: stacks label above the button group */
+.toggle-labeled {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Mini-label above a toggle group */
+.toggle-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  line-height: 1;
+}
