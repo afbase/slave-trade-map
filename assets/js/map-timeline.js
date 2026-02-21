@@ -168,6 +168,9 @@ function renderTimeline(yearlyFlowsJson, globalMinYear, globalMaxYear) {
               .attr("opacity", 0.9);
             el.attr("stroke-width", baseSW + 3);
           });
+        // Dim other trunks, brighten matching dataset's trunk
+        _flowGroup.selectAll(".trunk").attr("opacity", 0.15);
+        _flowGroup.selectAll('.trunk[data-dataset="' + ds + '"]').attr("opacity", 0.8);
       }
     })
     .on("mouseout", function() {
@@ -182,6 +185,8 @@ function renderTimeline(yearlyFlowsJson, globalMinYear, globalMaxYear) {
             var k = _svg ? d3.zoomTransform(_svg.node()).k : 1;
             d3.select(this).attr("stroke-width", baseSW / Math.sqrt(k));
           });
+        // Restore all trunks
+        _flowGroup.selectAll(".trunk").attr("opacity", 0.75);
       }
     });
 

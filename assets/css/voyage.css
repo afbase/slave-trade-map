@@ -110,3 +110,18 @@
 .accordion-search {
   padding: 6px 0 4px;
 }
+
+/* Accordion header highlighted by row hover or tl-bar hover (transient) */
+.accordion-header.cross-highlight {
+  background: var(--color-bg-hover-alt);
+}
+
+/* FlowTable row highlighted because its accordion is currently open (persistent) */
+.data-table tr.accordion-active td {
+  background: var(--color-bg-hover);
+}
+
+/* FlowTable row highlighted by tl-bar hover (transient) */
+.data-table tr.tl-bar-hover td {
+  background: var(--color-bg-hover);
+}

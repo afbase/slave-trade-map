@@ -24,8 +24,12 @@ pub fn FlowTable(flows: Vec<FlowData>, section_total: f64) -> Element {
                         } else {
                             0.0
                         };
+                        let sc = flow.source_code.to_string();
+                        let ds = flow.dataset.clone();
                         rsx! {
                             tr {
+                                "data-source-code": sc,
+                                "data-dataset": ds,
                                 td { "{flow.source_name}" }
                                 td { class: "num", "{flow.total_embarked:.0}" }
                                 td { class: "num", "{pct:.1}" }

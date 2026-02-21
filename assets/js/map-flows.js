@@ -162,6 +162,21 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
         d3.selectAll(".tl-bar").attr("opacity", 0.2);
         d3.selectAll('.tl-bar[data-source-code="' + flow.source_code + '"][data-dataset="' + dataset + '"]')
           .attr("opacity", 1);
+        // Dim other trunks, brighten matching dataset's trunk
+        _flowGroup.selectAll(".trunk").attr("opacity", 0.15);
+        _flowGroup.selectAll('.trunk[data-dataset="' + dataset + '"]').attr("opacity", 0.8);
+
+        // Cross-highlight HTML: FlowTable row + accordion header
+        document.querySelectorAll('.data-table tr.tl-bar-hover').forEach(function(r) {
+          r.classList.remove('tl-bar-hover');
+        });
+        document.querySelectorAll('.data-table tr[data-source-code="' + flow.source_code + '"][data-dataset="' + dataset + '"]')
+          .forEach(function(r) { r.classList.add('tl-bar-hover'); });
+        document.querySelectorAll('.accordion-header.cross-highlight').forEach(function(h) {
+          h.classList.remove('cross-highlight');
+        });
+        var _stemHdr = document.querySelector('.accordion-header[data-origin-code="' + flow.source_code + '"]');
+        if (_stemHdr) _stemHdr.classList.add('cross-highlight');
       })
       .on("mousemove", function(event) {
         var rect = document.getElementById("map-container").getBoundingClientRect();
@@ -184,6 +199,16 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
 
         // Restore all timeline bars
         d3.selectAll(".tl-bar").attr("opacity", 0.85);
+        // Restore all trunks
+        _flowGroup.selectAll(".trunk").attr("opacity", 0.75);
+
+        // Clear HTML cross-highlights
+        document.querySelectorAll('.data-table tr.tl-bar-hover').forEach(function(r) {
+          r.classList.remove('tl-bar-hover');
+        });
+        document.querySelectorAll('.accordion-header.cross-highlight').forEach(function(h) {
+          h.classList.remove('cross-highlight');
+        });
       });
   });
 
@@ -204,6 +229,7 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
       .attr("stroke", trunkColor)
       .attr("stroke-width", trunkWidth)
       .attr("data-base-sw", trunkWidth)
+      .attr("data-dataset", dataset)
       .attr("fill", "none")
       .attr("stroke-linecap", "round")
       .attr("opacity", 0.75);

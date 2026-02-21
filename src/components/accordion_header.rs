@@ -22,6 +22,7 @@ pub fn AccordionHeader(
     rsx! {
         div {
             class: "accordion-header",
+            "data-origin-code": origin_code.to_string(),
             onclick: move |_| {
                 let mut set = open_origins.write();
                 if set.contains(&origin_code) {

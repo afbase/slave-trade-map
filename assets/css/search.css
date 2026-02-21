@@ -57,7 +57,7 @@
 }
 
 .search-result:hover {
-  background: #e8e8e8;
+  background: var(--color-bg-hover-alt);
 }
 
 .search-result-stat {

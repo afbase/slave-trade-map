@@ -62,7 +62,7 @@ function updateMapTheme() {
   // Destination dots
   if (_dotsGroup) {
     var accentColor = cs.getPropertyValue('--color-accent').trim() || "#5a7a8a";
-    var dotStroke = isDark ? "#2a2e33" : "#fff";
+    var dotStroke = cs.getPropertyValue('--color-dot-stroke').trim() || (isDark ? "#3a4258" : "#fff");
     _dotsGroup.selectAll(".dest-dot").each(function() {
       var dot = d3.select(this);
       // Don't override selected (red) dots
@@ -111,6 +111,193 @@ function updateMapTheme() {
     });
   });
   observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+})();
+
+// Three-way cross-highlight: FlowTable rows ↔ timeline bars ↔ accordion headers
+(function initCrossHighlight() {
+  var _rowHoverActive = false;
+
+  // --- Helpers ---
+
+  function getOpenAccordionCodes() {
+    var codes = [];
+    document.querySelectorAll('.accordion-body').forEach(function(body) {
+      var hdr = body.previousElementSibling;
+      if (hdr && hdr.classList.contains('accordion-header')) {
+        var code = hdr.getAttribute('data-origin-code');
+        if (code) codes.push(code);
+      }
+    });
+    return codes;
+  }
+
+  // Restore tl-bar opacity based on current accordion state
+  function restoreBarHighlight() {
+    var openCodes = getOpenAccordionCodes();
+    if (openCodes.length === 1) {
+      d3.selectAll('.tl-bar').attr('opacity', 0.2);
+      d3.selectAll('.tl-bar[data-source-code="' + openCodes[0] + '"]').attr('opacity', 1);
+    } else {
+      d3.selectAll('.tl-bar').attr('opacity', 0.85);
+    }
+  }
+
+  function clearAccordionHeaderHighlight() {
+    document.querySelectorAll('.accordion-header.cross-highlight').forEach(function(h) {
+      h.classList.remove('cross-highlight');
+    });
+  }
+
+  function clearFlowRowTransientHighlight() {
+    document.querySelectorAll('.data-table tr.tl-bar-hover').forEach(function(r) {
+      r.classList.remove('tl-bar-hover');
+    });
+  }
+
+  // Highlight the stem matching code+dataset (and its halo) and dim the other trunk
+  function highlightStemAndTrunk(code, ds) {
+    if (!window._flowGroup) return;
+    _flowGroup.selectAll('.stem-halo').remove();
+    _flowGroup.selectAll('.stem').attr('opacity', 0.15);
+    _flowGroup.selectAll('.stem[data-source-code="' + code + '"][data-dataset="' + ds + '"]')
+      .attr('opacity', 1)
+      .each(function() {
+        var baseSW = +this.getAttribute('data-base-sw') || 2;
+        _flowGroup.insert('path', '.stem')
+          .attr('class', 'stem-halo')
+          .attr('d', d3.select(this).attr('d'))
+          .attr('stroke', 'white')
+          .attr('stroke-width', baseSW + 7)
+          .attr('fill', 'none')
+          .attr('stroke-linecap', 'round')
+          .attr('opacity', 0.9);
+        d3.select(this).attr('stroke-width', baseSW + 3);
+      });
+    _flowGroup.selectAll('.trunk').attr('opacity', 0.15);
+    _flowGroup.selectAll('.trunk[data-dataset="' + ds + '"]').attr('opacity', 0.8);
+  }
+
+  // Highlight all stems for a source code regardless of dataset (used when only code is known)
+  function highlightStemByCode(code) {
+    if (!window._flowGroup) return;
+    _flowGroup.selectAll('.stem-halo').remove();
+    _flowGroup.selectAll('.stem').attr('opacity', 0.15);
+    _flowGroup.selectAll('.stem[data-source-code="' + code + '"]')
+      .attr('opacity', 1)
+      .each(function() {
+        var baseSW = +this.getAttribute('data-base-sw') || 2;
+        _flowGroup.insert('path', '.stem')
+          .attr('class', 'stem-halo')
+          .attr('d', d3.select(this).attr('d'))
+          .attr('stroke', 'white')
+          .attr('stroke-width', baseSW + 7)
+          .attr('fill', 'none')
+          .attr('stroke-linecap', 'round')
+          .attr('opacity', 0.9);
+        d3.select(this).attr('stroke-width', baseSW + 3);
+      });
+    // Trunks stay full opacity — dataset unknown so can't target one
+  }
+
+  // Restore stems and trunks to their resting state
+  function restoreStemsAndTrunk() {
+    if (!window._flowGroup) return;
+    _flowGroup.selectAll('.stem-halo').remove();
+    _flowGroup.selectAll('.stem').attr('opacity', 0.7)
+      .each(function() {
+        var baseSW = +this.getAttribute('data-base-sw') || 2;
+        var k = _svg ? d3.zoomTransform(_svg.node()).k : 1;
+        d3.select(this).attr('stroke-width', baseSW / Math.sqrt(k));
+      });
+    _flowGroup.selectAll('.trunk').attr('opacity', 0.75);
+  }
+
+  // Re-apply accordion-driven highlights after Dioxus re-renders
+  function refreshAccordionHighlight() {
+    var openCodes = getOpenAccordionCodes();
+
+    // Update flow-table row persistent tints
+    document.querySelectorAll('.data-table tr.accordion-active').forEach(function(r) {
+      r.classList.remove('accordion-active');
+    });
+    openCodes.forEach(function(code) {
+      document.querySelectorAll('.data-table tr[data-source-code="' + code + '"]').forEach(function(r) {
+        r.classList.add('accordion-active');
+      });
+    });
+
+    // Update tl-bar opacity (skip if row hover owns it)
+    if (!_rowHoverActive) {
+      restoreBarHighlight();
+      // Update stem/trunk to match accordion state
+      if (openCodes.length === 1) {
+        highlightStemByCode(openCodes[0]);
+      } else {
+        restoreStemsAndTrunk();
+      }
+    }
+  }
+
+  // --- Direction 1: FlowTable row hover → tl-bars + accordion header ---
+
+  document.addEventListener('mouseover', function(e) {
+    var row = e.target.closest && e.target.closest('.data-table tr[data-source-code]');
+    if (!row) return;
+    var code = row.getAttribute('data-source-code');
+    var ds = row.getAttribute('data-dataset');
+    if (!code || !ds) return;
+    _rowHoverActive = true;
+    d3.selectAll('.tl-bar').attr('opacity', 0.2);
+    d3.selectAll('.tl-bar[data-source-code="' + code + '"][data-dataset="' + ds + '"]')
+      .attr('opacity', 1);
+    clearAccordionHeaderHighlight();
+    var hdr = document.querySelector('.accordion-header[data-origin-code="' + code + '"]');
+    if (hdr) hdr.classList.add('cross-highlight');
+    highlightStemAndTrunk(code, ds);
+  });
+
+  document.addEventListener('mouseout', function(e) {
+    var row = e.target.closest && e.target.closest('.data-table tr[data-source-code]');
+    if (!row) return;
+    _rowHoverActive = false;
+    restoreBarHighlight();
+    clearAccordionHeaderHighlight();
+    restoreStemsAndTrunk();
+  });
+
+  // --- Direction 2: Accordion click → tl-bars + FlowTable rows ---
+  // setTimeout(50) waits for Dioxus to finish re-rendering after the click.
+
+  document.addEventListener('click', function(e) {
+    var hdr = e.target.closest && e.target.closest('.accordion-header');
+    if (!hdr) return;
+    setTimeout(refreshAccordionHighlight, 50);
+  });
+
+  // --- Direction 3: tl-bar hover → FlowTable rows + accordion header ---
+  // The existing D3 handler in map-timeline.js handles bar/stem opacity.
+  // This handler adds the HTML-side highlights.
+
+  document.addEventListener('mouseover', function(e) {
+    if (!e.target || !e.target.classList) return;
+    if (!e.target.classList.contains('tl-bar')) return;
+    var code = e.target.getAttribute('data-source-code');
+    var ds = e.target.getAttribute('data-dataset');
+    if (!code || !ds) return;
+    clearFlowRowTransientHighlight();
+    document.querySelectorAll('.data-table tr[data-source-code="' + code + '"][data-dataset="' + ds + '"]')
+      .forEach(function(r) { r.classList.add('tl-bar-hover'); });
+    clearAccordionHeaderHighlight();
+    var hdr = document.querySelector('.accordion-header[data-origin-code="' + code + '"]');
+    if (hdr) hdr.classList.add('cross-highlight');
+  });
+
+  document.addEventListener('mouseout', function(e) {
+    if (!e.target || !e.target.classList) return;
+    if (!e.target.classList.contains('tl-bar')) return;
+    clearFlowRowTransientHighlight();
+    clearAccordionHeaderHighlight();
+  });
 })();
 
 // Expose functions globally

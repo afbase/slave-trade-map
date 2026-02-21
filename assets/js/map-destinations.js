@@ -39,7 +39,7 @@ function renderDestinations(destinationsJson, mode) {
       .attr("r", r / currentSK)
       .attr("data-base-r", r)
       .attr("fill", cs.getPropertyValue('--color-accent').trim() || "#5a7a8a")
-      .attr("stroke", isDark ? "#2a2e33" : "#fff")
+      .attr("stroke", cs.getPropertyValue('--color-dot-stroke').trim() || (isDark ? "#3a4258" : "#fff"))
       .attr("stroke-width", 1 / currentK)
       .style("cursor", "pointer");
 

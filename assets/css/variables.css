@@ -25,6 +25,8 @@
 
   --color-accent: #5a7a8a;
   --color-accent-dark: #4a6a7a;
+  --color-on-accent: #fff;
+  --color-dot-stroke: #fff;
 
   --color-ta: #6a5830;
   --color-ta-border: #c8a050;
@@ -58,7 +60,7 @@
 
 body.dark {
   --color-bg: #212529;
-  --color-bg-card: #2a2e33;
+  --color-bg-card: #313840;
   --color-bg-hover: #2e3338;
   --color-bg-hover-alt: #363b42;
   --color-bg-toggle: #343a40;
@@ -67,7 +69,7 @@ body.dark {
   --color-text-dark: #f0f0f0;
   --color-text-mid: #ced4da;
   --color-text-light: #adb5bd;
-  --color-text-muted: #8a929a;
+  --color-text-muted: #a0aab4;
   --color-text-faint: #6c757d;
   --color-text-disabled: #5a6370;
   --color-text-placeholder: #4a5260;
@@ -90,13 +92,15 @@ body.dark {
   --color-land: #3a4038;
   --color-land-stroke: #4a5048;
   --color-graticule: #2e3330;
-  --color-ocean-label: #3a4038;
-  --color-continent-label: #4a5048;
+  --color-ocean-label: #607888;
+  --color-continent-label: #8a9888;
   --color-reset-btn: #4a5260;
   --color-reset-text: #adb5bd;
   --color-reset-hover: #363b42;
   --color-citation-border: #4a4f55;
   --color-interp-header-bg: #2e3338;
+  --color-on-accent: #212529;
+  --color-dot-stroke: #3a4258;
   --shadow-dropdown: 0 2px 8px rgba(0,0,0,0.3);
   --shadow-thumb: 0 1px 3px rgba(0,0,0,0.5);
 }
