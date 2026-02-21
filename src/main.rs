@@ -124,26 +124,27 @@ fn App() -> Element {
 
             if *state.loading.read() {
                 div { class: "loading", "Loading database..." }
-            } else if (state.show_about)() {
-                AboutTab {}
             } else {
-                div { class: "main-content",
-                    div { class: "map-area",
-                        div { id: "map-container" }
+                div {
+                    style: if (state.show_about)() { "display: none" } else { "" },
+                    div { class: "main-content",
+                        div { class: "map-area",
+                            div { id: "map-container" }
+                        }
+                        InfoPanel {}
                     }
-                    InfoPanel {}
+                    TimeSlider {}
+                    if (state.selected_dest)().is_some() && !state.voyage_data.read().is_empty() {
+                        VoyageDetails {
+                            voyages: state.voyage_data.read().clone(),
+                            ds_mode_str: (state.dataset_mode)(),
+                            open_origins: state.open_origins,
+                            expanded_voyages: state.expanded_voyages,
+                        }
+                    }
                 }
-
-                TimeSlider {}
-
-                // Voyage details
-                if (state.selected_dest)().is_some() && !state.voyage_data.read().is_empty() {
-                    VoyageDetails {
-                        voyages: state.voyage_data.read().clone(),
-                        ds_mode_str: (state.dataset_mode)(),
-                        open_origins: state.open_origins,
-                        expanded_voyages: state.expanded_voyages,
-                    }
+                if (state.show_about)() {
+                    AboutTab {}
                 }
             }
         }
