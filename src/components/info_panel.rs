@@ -30,6 +30,14 @@ pub fn InfoPanel() -> Element {
     let is_combined =
         (state.dataset_mode)() == "combined" && !ta_flows.is_empty() && !iam_flows.is_empty();
 
+    let min_year: Option<i64> = state.flows.read().iter().flat_map(|f| f.first_year).min();
+    let max_year: Option<i64> = state.flows.read().iter().flat_map(|f| f.last_year).max();
+
+    let ta_min: Option<i64> = ta_flows.iter().flat_map(|f| f.first_year).min();
+    let ta_max: Option<i64> = ta_flows.iter().flat_map(|f| f.last_year).max();
+    let iam_min: Option<i64> = iam_flows.iter().flat_map(|f| f.first_year).min();
+    let iam_max: Option<i64> = iam_flows.iter().flat_map(|f| f.last_year).max();
+
     rsx! {
         div { class: "info-panel",
             h2 { "Flow Details" }
@@ -47,15 +55,27 @@ pub fn InfoPanel() -> Element {
                             if is_combined {
                                 div { class: "dest-stats",
                                     "{total_embarked:.0} total enslaved persons · {info.voyage_count} voyages"
+                                    if let (Some(y1), Some(y2)) = (min_year, max_year) {
+                                        if y1 == y2 { " · {y1}" } else { " · {y1} \u{2013} {y2}" }
+                                    }
                                 }
                                 div { class: "dest-stats-breakdown",
                                     span { class: "ta-accent", "TASTD: {ta_total:.0}" }
+                                    if let (Some(y1), Some(y2)) = (ta_min, ta_max) {
+                                        span { class: "ta-years", " ({y1}\u{2013}{y2})" }
+                                    }
                                     " · "
                                     span { class: "iam-accent", "IAm: {iam_total:.0}" }
+                                    if let (Some(y1), Some(y2)) = (iam_min, iam_max) {
+                                        span { class: "iam-years", " ({y1}\u{2013}{y2})" }
+                                    }
                                 }
                             } else {
                                 div { class: "dest-stats",
                                     "{total_embarked:.0} enslaved persons · {info.voyage_count} voyages"
+                                    if let (Some(y1), Some(y2)) = (min_year, max_year) {
+                                        if y1 == y2 { " · {y1}" } else { " · {y1} \u{2013} {y2}" }
+                                    }
                                 }
                             }
                         }

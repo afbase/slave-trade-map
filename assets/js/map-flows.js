@@ -131,23 +131,9 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
 
     stemEl
       .on("mouseover", function(event) {
-        var self = d3.select(this);
-        var curSW = +self.attr("stroke-width");
-
-        // Dim all other stems, brighten this one
-        _flowGroup.selectAll(".stem").attr("opacity", 0.15);
-        self.attr("opacity", 1).attr("stroke-width", curSW + 3);
-
-        // Insert a white halo path behind the hovered stem
-        _flowGroup.insert("path", ".stem")
-          .attr("class", "stem-halo")
-          .attr("d", self.attr("d"))
-          .attr("stroke", "white")
-          .attr("stroke-width", curSW + 7)
-          .attr("fill", "none")
-          .attr("stroke-linecap", "round")
-          .attr("opacity", 0.9);
-
+        if (window._highlightStemAndTrunk) {
+          window._highlightStemAndTrunk(flow.source_code, dataset);
+        }
         _tooltipDiv.style.opacity = "1";
         _tooltipDiv.innerHTML =
           '<div class="tt-route">' + flow.source_name + ' &rarr; ' + flow.target_name +
@@ -157,26 +143,6 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
           '<strong>' + flow.voyage_count.toLocaleString() + '</strong> voyages' +
           yearStr +
           '</div>';
-
-        // Cross-highlight: dim all timeline bars, brighten matching source
-        d3.selectAll(".tl-bar").attr("opacity", 0.2);
-        d3.selectAll('.tl-bar[data-source-code="' + flow.source_code + '"][data-dataset="' + dataset + '"]')
-          .attr("opacity", 1);
-        // Dim other trunks, brighten matching dataset's trunk
-        _flowGroup.selectAll(".trunk").attr("opacity", 0.15);
-        _flowGroup.selectAll('.trunk[data-dataset="' + dataset + '"]').attr("opacity", 0.8);
-
-        // Cross-highlight HTML: FlowTable row + accordion header
-        document.querySelectorAll('.data-table tr.tl-bar-hover').forEach(function(r) {
-          r.classList.remove('tl-bar-hover');
-        });
-        document.querySelectorAll('.data-table tr[data-source-code="' + flow.source_code + '"][data-dataset="' + dataset + '"]')
-          .forEach(function(r) { r.classList.add('tl-bar-hover'); });
-        document.querySelectorAll('.accordion-header.cross-highlight').forEach(function(h) {
-          h.classList.remove('cross-highlight');
-        });
-        var _stemHdr = document.querySelector('.accordion-header[data-origin-code="' + flow.source_code + '"]');
-        if (_stemHdr) _stemHdr.classList.add('cross-highlight');
       })
       .on("mousemove", function(event) {
         var rect = document.getElementById("map-container").getBoundingClientRect();
@@ -184,31 +150,10 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
         _tooltipDiv.style.top = (event.clientY - rect.top - 10) + "px";
       })
       .on("mouseout", function() {
-        // Remove halo
-        _flowGroup.selectAll(".stem-halo").remove();
-
-        // Restore all stems to normal opacity and zoom-adjusted width
-        _flowGroup.selectAll(".stem").attr("opacity", 0.7)
-          .each(function() {
-            var baseSW = +this.getAttribute("data-base-sw") || 2;
-            var k = _svg ? d3.zoomTransform(_svg.node()).k : 1;
-            d3.select(this).attr("stroke-width", baseSW / Math.sqrt(k));
-          });
-
         _tooltipDiv.style.opacity = "0";
-
-        // Restore all timeline bars
-        d3.selectAll(".tl-bar").attr("opacity", 0.85);
-        // Restore all trunks
-        _flowGroup.selectAll(".trunk").attr("opacity", 0.75);
-
-        // Clear HTML cross-highlights
-        document.querySelectorAll('.data-table tr.tl-bar-hover').forEach(function(r) {
-          r.classList.remove('tl-bar-hover');
-        });
-        document.querySelectorAll('.accordion-header.cross-highlight').forEach(function(h) {
-          h.classList.remove('cross-highlight');
-        });
+        if (window._restoreStemsAndTrunk) {
+          window._restoreStemsAndTrunk();
+        }
       });
   });
 

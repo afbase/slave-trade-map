@@ -72,6 +72,7 @@ function initMap() {
   // Groups for layering (inside masterGroup)
   var landGroup = _masterGroup.append("g").attr("class", "land-group");
   _flowGroup = _masterGroup.append("g").attr("class", "flows");
+  window._flowGroup = _flowGroup;
   _dotsGroup = _masterGroup.append("g").attr("class", "dots");
 
   // Arrow marker
