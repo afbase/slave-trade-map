@@ -22,8 +22,21 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
   var convergePt;
   var destQuadrant = typeof classifyDestQuadrant === 'function'
     ? classifyDestQuadrant(destCode) : "mid-atlantic";
+  var trunkBias = (destQuadrant === "rio-plata" || destQuadrant === "pacific-south")
+    ? "south-atlantic" : null;
 
-  if (dataset === "interamerican" && typeof computeIAmConvergence === 'function') {
+  // Africa -> Americas: every stem runs west from its own coast into one junction.
+  var plan = null;
+  if (dataset !== "interamerican" && typeof planAtlanticStems === 'function') {
+    plan = planAtlanticStems(
+      flows.map(function(f) { return f.source_code; }), destCode, zOffset * 15, trunkBias);
+  }
+  // Landings on the African coast: short coastwise arcs, no shared trunk.
+  var coastwise = !plan && typeof isAfricanCode === 'function' && isAfricanCode(destCode);
+
+  if (plan) {
+    convergePt = plan.junction;
+  } else if (dataset === "interamerican" && typeof computeIAmConvergence === 'function') {
     convergePt = computeIAmConvergence(sourcePoints, destPt, destCode, destQuadrant);
   } else {
     var convergeX = (westmostSourceX + destPt[0]) / 2;
@@ -35,7 +48,7 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
   }
 
   // Ensure convergence point is over ocean
-  if (window._landFeatures && _projection.invert) {
+  if (!plan && window._landFeatures && _projection.invert) {
     var geo = _projection.invert(convergePt);
     if (geo) {
       var onLand = false;
@@ -61,7 +74,7 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
   }
 
   // For combined mode, offset convergence slightly to separate trunk groups
-  if (zOffset !== 0) {
+  if (!plan && zOffset !== 0) {
     convergePt[1] += zOffset * 15;
   }
 
@@ -75,18 +88,6 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
     if (srcB === 60800 && srcA !== 60800) return -1;
     return (scB ? scB.lat : 0) - (scA ? scA.lat : 0);
   });
-
-  // Spine-and-ribbon stem separation (non-crossing by construction)
-  if (typeof computeRibbonStems === 'function') {
-    var stemInfos = flows.map(function(f) {
-      var sc = getCoords(f.source_code);
-      if (!sc) return null;
-      var srcPt = _projection([sc.lng, sc.lat]);
-      if (!srcPt) return null;
-      return { sourceCode: f.source_code, srcPt: srcPt, destCode: destCode };
-    }).filter(Boolean);
-    computeRibbonStems(stemInfos, convergePt, destCode);
-  }
 
   var cs = getComputedStyle(document.documentElement);
   var trunkColor = dataset === "transatlantic"
@@ -105,8 +106,16 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
     var pct = ((flow.total_embarked / totalEmbarked) * 100).toFixed(1);
     var dsLabel = dataset === "transatlantic" ? "Transatlantic" : "Inter-American";
 
-    var stemPath = generateRoutedPath(flow.source_code, srcPt, convergePt, destCode);
+    var stemPath;
+    if (plan) {
+      stemPath = plan.stems[flow.source_code];
+    } else if (coastwise) {
+      stemPath = generateArc(srcPt, destPt);
+    } else {
+      stemPath = generateRoutedPath(flow.source_code, srcPt, convergePt, destCode);
+    }
     if (!stemPath) return;
+    if (coastwise) drawArrowhead(_flowGroup, stemPath, sw, color);
 
     var stemEl = _flowGroup
       .append("path")
@@ -158,12 +167,11 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
   });
 
   // Draw trunk
+  if (coastwise) return;
   var trunkWidth = Math.min(strokeScale(totalEmbarked) * 0.8, 20);
-  var bias = null;
-  if (destQuadrant === "rio-plata" || destQuadrant === "pacific-south") {
-    bias = "south-atlantic";
-  }
-  var trunkPath = (typeof window.generate_arc === 'function')
+  var bias = trunkBias;
+  var trunkPath = plan ? plan.trunk
+    : (typeof window.generate_arc === 'function')
     ? window.generate_arc(convergePt[0], convergePt[1], destPt[0], destPt[1], bias || "")
     : generateArc(convergePt, destPt, bias);
   if (trunkPath) {
@@ -187,6 +195,7 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
 function renderFlows(flowsJson, destCode) {
   if (!_flowGroup) return;
   _flowGroup.selectAll("*").remove();
+  if (typeof setSelectedOrigin === 'function') setSelectedOrigin(null);
 
   if (typeof _waypointCache !== 'undefined') {
     for (var k in _waypointCache) delete _waypointCache[k];
@@ -243,8 +252,123 @@ function renderFlows(flowsJson, destCode) {
   });
 }
 
+// Render the fan of flows leaving one African port (or one "port unspecified"
+// bucket) for every destination it supplied. Each flow is a single westward
+// line: port -> offshore gate -> junction -> destination.
+function renderOriginFlows(flowsJson, originCode) {
+  if (!_flowGroup) return;
+  _flowGroup.selectAll("*").remove();
+  if (typeof setSelectedOrigin === 'function') setSelectedOrigin(originCode);
+
+  var flows;
+  try {
+    flows = JSON.parse(flowsJson);
+  } catch (e) {
+    console.error("Invalid origin flows JSON", e);
+    return;
+  }
+  var srcCoords = getCoords(originCode);
+  if (!srcCoords || flows.length === 0) return;
+  var srcPt = _projection([srcCoords.lng, srcCoords.lat]);
+  if (!srcPt) return;
+
+  var total = d3.sum(flows, function(d) { return d.total_embarked; });
+  var maxEmbarked = d3.max(flows, function(d) { return d.total_embarked; });
+  var strokeScale = d3.scaleSqrt().domain([0, maxEmbarked]).range([1, 10]);
+  var color = getSourceColor(originCode, "transatlantic");
+  var k = d3.zoomTransform(_svg.node()).k;
+  var sk = Math.sqrt(k);
+
+  // Thickest first so thin lines stay visible on top.
+  flows.sort(function(a, b) { return b.total_embarked - a.total_embarked; });
+
+  flows.forEach(function(flow) {
+    var dc = getCoords(flow.target_code);
+    if (!dc) return;
+    var destPt = _projection([dc.lng, dc.lat]);
+    if (!destPt) return;
+
+    var d = null;
+    var plan = typeof planAtlanticStems === 'function'
+      ? planAtlanticStems([originCode], flow.target_code, 0, null) : null;
+    if (plan) {
+      // The trunk starts where the stem ends: append its curve to the stem.
+      d = plan.stems[originCode] + plan.trunk.replace(/^M [^Q]+/, " ");
+    } else {
+      d = generateArc(srcPt, destPt);
+    }
+    if (!d) return;
+
+    var sw = strokeScale(flow.total_embarked);
+    var pct = total > 0 ? ((flow.total_embarked / total) * 100).toFixed(1) : "0.0";
+    var yearStr = '';
+    if (flow.first_year != null && flow.last_year != null) {
+      yearStr = flow.first_year === flow.last_year
+        ? '<br>Year: ' + flow.first_year
+        : '<br>Active: ' + flow.first_year + ' \u2013 ' + flow.last_year;
+    }
+
+    _flowGroup
+      .append("path")
+      .attr("class", "flow-path stem origin-flow")
+      .attr("d", d)
+      .attr("stroke", color)
+      .attr("stroke-width", sw / sk)
+      .attr("data-base-sw", sw)
+      // Keyed on the destination so table rows and lines cross-highlight.
+      .attr("data-source-code", flow.target_code)
+      .attr("data-dataset", "transatlantic")
+      .attr("fill", "none")
+      .attr("stroke-linecap", "round")
+      .attr("opacity", 0.7)
+      .on("mouseover", function() {
+        if (window._highlightStemAndTrunk) {
+          window._highlightStemAndTrunk(flow.target_code, "transatlantic");
+        }
+        _tooltipDiv.style.opacity = "1";
+        _tooltipDiv.innerHTML =
+          '<div class="tt-route">' + flow.source_name + ' &rarr; ' + flow.target_name + '</div>' +
+          '<div class="tt-stat">' +
+          '<strong>' + Math.round(flow.total_embarked).toLocaleString() + '</strong> enslaved persons (' + pct + '%)<br>' +
+          '<strong>' + flow.voyage_count.toLocaleString() + '</strong> voyages' +
+          yearStr + '</div>';
+      })
+      .on("mousemove", function(event) {
+        var rect = document.getElementById("map-container").getBoundingClientRect();
+        _tooltipDiv.style.left = (event.clientX - rect.left + 16) + "px";
+        _tooltipDiv.style.top = (event.clientY - rect.top - 10) + "px";
+      })
+      .on("mouseout", function() {
+        _tooltipDiv.style.opacity = "0";
+        if (window._restoreStemsAndTrunk) window._restoreStemsAndTrunk();
+      });
+
+    drawArrowhead(_flowGroup, d, Math.max(sw * 0.6, 1), color);
+  });
+
+  // Arrowheads were drawn at zoom 1; match the current zoom.
+  var s = Math.min(1 / sk, 0.6);
+  _flowGroup.selectAll(".flow-arrowhead").each(function() {
+    var el = d3.select(this);
+    var tx = +el.attr("data-tip-x"), ty = +el.attr("data-tip-y");
+    if (k > 1) {
+      el.attr("transform",
+        "translate(" + tx + "," + ty + ") scale(" + s + ") translate(" + (-tx) + "," + (-ty) + ")");
+    }
+  });
+
+  // No destination is selected while an origin is shown.
+  if (_dotsGroup) {
+    var accent = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim() || "#5a7a8a";
+    _dotsGroup.selectAll(".dest-dot").each(function() {
+      d3.select(this).attr("fill", accent).attr("data-base-r", 3.5).attr("r", 3.5 / sk);
+    });
+  }
+}
+
 function clearFlows() {
   if (_flowGroup) _flowGroup.selectAll("*").remove();
+  if (typeof setSelectedOrigin === 'function') setSelectedOrigin(null);
   if (_dotsGroup) {
     var k = _svg ? d3.zoomTransform(_svg.node()).k : 1;
     var sk = Math.sqrt(k);

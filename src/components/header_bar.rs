@@ -1,6 +1,6 @@
 //! Top header bar: title, subtitle, and controls (search, toggles, about).
 
-use crate::components::{DatasetToggle, DestinationSearch, ModeToggle};
+use crate::components::{DatasetToggle, DestinationSearch, ModeToggle, OriginToggles};
 use crate::state::AppState;
 use dioxus::prelude::*;
 
@@ -31,6 +31,7 @@ pub fn HeaderBar() -> Element {
             DestinationSearch {}
             DatasetToggle {}
             ModeToggle {}
+            OriginToggles {}
             // About toggle
             div { class: "toggle-labeled",
                 span { class: "toggle-label", "Info" }

@@ -4,7 +4,7 @@
 //! They are evaluated as globals (no ES modules) and exposed via `window.*`.
 //! This module provides safe Rust wrappers that serialize data and call those globals.
 
-use crate::models::{DatasetMode, DestinationInfo, FlowData, YearlySourceFlow};
+use crate::models::{DatasetMode, DestinationInfo, FlowData, OriginInfo, YearlySourceFlow};
 
 static COORDS_JS: &str = include_str!("../assets/js/coords.js");
 static COLORS_JS: &str = include_str!("../assets/js/colors.js");
@@ -12,6 +12,7 @@ static ROUTE_PLANNER_JS: &str = include_str!("../assets/js/route-planner.js");
 static MAP_HELPERS_JS: &str = include_str!("../assets/js/map-helpers.js");
 static MAP_CORE_JS: &str = include_str!("../assets/js/map-core.js");
 static MAP_DESTINATIONS_JS: &str = include_str!("../assets/js/map-destinations.js");
+static MAP_ORIGINS_JS: &str = include_str!("../assets/js/map-origins.js");
 static MAP_FLOWS_JS: &str = include_str!("../assets/js/map-flows.js");
 static MAP_TIMELINE_JS: &str = include_str!("../assets/js/map-timeline.js");
 static MAP_UI_JS: &str = include_str!("../assets/js/map-ui.js");
@@ -34,6 +35,7 @@ pub fn load_map_scripts() {
         MAP_HELPERS_JS,
         MAP_CORE_JS,
         MAP_DESTINATIONS_JS,
+        MAP_ORIGINS_JS,
         MAP_FLOWS_JS,
         MAP_TIMELINE_JS,
         MAP_UI_JS,
@@ -43,7 +45,7 @@ pub fn load_map_scripts() {
 }
 
 /// Initialize the D3 map and render initial destinations once D3/topojson are available.
-pub fn init_map_with_destinations(dest_json: &str, mode: &str) {
+pub fn init_map_with_destinations(dest_json: &str, origins_json: &str, mode: &str) {
     let init_js = format!(
         r#"
         (function() {{
@@ -56,6 +58,7 @@ pub fn init_map_with_destinations(dest_json: &str, mode: &str) {
                             clearInterval(waitForMap);
                             window.__destData = {dest_json};
                             renderDestinations(JSON.stringify(window.__destData), '{mode}');
+                            setOriginData({origins_json});
                         }}
                     }}, 200);
                 }}
@@ -81,6 +84,38 @@ pub fn render_flows(flows: &[FlowData], dest_code: i64, ds: DatasetMode) {
     call_js(&format!(
         "window.__flowData = {json}; renderFlows(JSON.stringify(window.__flowData), {dest_code}); renderLegend('{ds_label}');"
     ));
+}
+
+/// Render African embarkation markers (region bubbles / ports / "unspecified" rings).
+pub fn render_origins(origins: &[OriginInfo]) {
+    let json = serde_json::to_string(origins).unwrap_or_default();
+    call_js(&format!("setOriginData({json});"));
+}
+
+/// Update how the African embarkation layer is drawn.
+/// `level` is "auto" (by zoom), "regions" or "ports".
+pub fn set_origin_options(show: bool, level: &str, unspecified: bool) {
+    call_js(&format!(
+        "setOriginOptions({{show:{show},level:'{level}',unspecified:{unspecified}}});"
+    ));
+}
+
+/// Show or hide voyages that landed in Africa as destination markers.
+pub fn set_african_landings(show: bool) {
+    call_js(&format!("setAfricanLandings({show});"));
+}
+
+/// Render the fan of flows leaving one African place, including legend.
+pub fn render_origin_flows(flows: &[FlowData], origin_code: i64) {
+    let json = serde_json::to_string(flows).unwrap_or_default();
+    call_js(&format!(
+        "window.__flowData = {json}; renderOriginFlows(JSON.stringify(window.__flowData), {origin_code}); renderLegend('transatlantic');"
+    ));
+}
+
+/// Zoom the map to an African place and open its region.
+pub fn focus_origin(code: i64) {
+    call_js(&format!("focusOrigin({code});"));
 }
 
 /// Remove all flow arrows and reset dot highlights.

@@ -81,3 +81,16 @@
 .search-clear-btn:hover {
   color: var(--color-text-dark);
 }
+
+/* African embarkation ports in the search results */
+.search-result-tag {
+  margin-left: 6px;
+  padding: 1px 5px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  border-radius: 2px;
+  background: var(--color-ta, #b09040);
+  color: #fff;
+}

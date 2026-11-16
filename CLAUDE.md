@@ -14,3 +14,7 @@ How you will do so is:
 
 
 You must use dioxus.  you must use d3.js. this is strictly a wasm32-unknown-unknown blob that is generated. So no Server side code. 
+
+## Route planning lives in JS only
+
+`assets/js/route-planner.js` is the single route builder; there is no Rust copy (the old `src/routing` module was removed). Africa → Americas stems come from `planAtlanticStems()`: each stem runs from its own offshore gate into one junction and must never step back east. `cd tests && npm install && npm test` checks that for every destination. See `docs/african-ports-and-routing-plan.md` for the reasoning.

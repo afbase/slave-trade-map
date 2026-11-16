@@ -1,5 +1,8 @@
-// Dynamic route waypoints for slave trade flow map
-// Computes destination-aware waypoint chains with land avoidance
+// Route planning for the slave trade flow map. This file is the only route
+// builder: there is no Rust copy to keep in step.
+//   - Africa -> Americas stems: planAtlanticStems() (bottom of this file)
+//   - everything else (inter-American, Europe-bound): waypoint chains with
+//     land avoidance, buildWaypointChain() + computeDynamicWaypoints()
 
 var MARITIME_LANDMARKS = {
   capeAgulhas: { lat: -34.83, lng: 20 },
@@ -8,21 +11,27 @@ var MARITIME_LANDMARKS = {
   capeVerde: { lat: 14.93, lng: -23.51 },
   pontaDoSeixas: { lat: -7.15, lng: -33.8 },
   // Offshore reference points per zone
-  senegambiaOffshore: { lat: 14.5, lng: -20 },
-  sierraLeoneOffshore: { lat: 8.5, lng: -16 },
-  windwardOffshore: { lat: 6, lng: -12 },
-  goldCoastOffshore: { lat: 4, lng: -7 },
-  beninOffshore: { lat: 5, lng: -4 },
-  biafraOffshore: { lat: 4, lng: 2 },
-  wcaOffshore: { lat: -8, lng: 5 },
+  senegambiaOffshore: { lat: 14, lng: -18.5 },
+  sierraLeoneOffshore: { lat: 8, lng: -15 },
+  windwardOffshore: { lat: 4.7, lng: -11 },
+  goldCoastOffshore: { lat: 3.9, lng: -2 },
+  beninOffshore: { lat: 3.4, lng: 1.5 },
+  biafraOffshore: { lat: 2.9, lng: 6 },
+  wcaOffshore: { lat: -6.8, lng: 10 },
   seAfricaOffshore: { lat: -25, lng: 25 },
-  otherAfricaCoast: { lat: 2, lng: 8 }
+  otherAfricaCoast: { lat: -2.8, lng: 3.5 }
 };
 
 var _waypointCache = {};
 
+// Coordinates for a place code, falling back to the parent region (xx00).
+function _routeCoords(code) {
+  if (typeof getCoords === 'function') return getCoords(code);
+  return regionCoords[code] || regionCoords[Math.floor(code / 100) * 100] || null;
+}
+
 function classifyDestQuadrant(destCode) {
-  var dc = regionCoords[destCode];
+  var dc = _routeCoords(destCode);
   if (!dc) return "mid-atlantic";
   var lat = dc.lat;
   var lng = dc.lng;
@@ -46,7 +55,7 @@ function isWestwardQuadrant(q) {
 }
 
 function classifySourceQuadrant(sourceCode) {
-  var sc = regionCoords[sourceCode] || regionCoords[Math.floor(sourceCode/100)*100];
+  var sc = _routeCoords(sourceCode);
   if (!sc) return "unknown";
   var lat = sc.lat, lng = sc.lng;
   if (lat >= 8 && lat <= 25 && lng >= -100 && lng <= -59) return "caribbean";
@@ -62,113 +71,47 @@ function buildWaypointChain(sourceCode, destQuadrant) {
   var src = Math.floor(sourceCode / 100) * 100;
   var M = MARITIME_LANDMARKS;
 
+  // African sources. Routes to the Americas are planned by planAtlanticStems();
+  // these chains only serve destinations that are not to the west
+  // (Europe, Atlantic islands).
+  var toEurope = destQuadrant === "europe";
   switch (src) {
     case 60800: // SE Africa
       var chain = [M.capeAgulhas, M.westOfCape, M.stHelena];
-      if (isBrazilQuadrant(destQuadrant) || destQuadrant === "rio-plata") {
-        chain.push({ lat: -14, lng: -20 });
-      } else if (isWestwardQuadrant(destQuadrant)) {
-        chain.push({ lat: -6, lng: -18 }, { lat: -4, lng: -26 });
-      } else if (destQuadrant === "europe") {
-        chain.push({ lat: 0, lng: -16 }, { lat: 10, lng: -20 });
-      }
+      if (toEurope) chain.push({ lat: 0, lng: -16 }, { lat: 10, lng: -20 });
       return chain;
-
     case 60700: // W Central Africa
-      if (isBrazilQuadrant(destQuadrant) || destQuadrant === "rio-plata") {
-        return [M.wcaOffshore, M.stHelena, { lat: -11, lng: -18 }];
-      }
-      if (isWestwardQuadrant(destQuadrant)) {
-        return [M.wcaOffshore, { lat: -1, lng: -12 }, { lat: 2, lng: -32 }];
-      }
-      if (destQuadrant === "europe") {
-        return [M.wcaOffshore, M.stHelena, { lat: 8, lng: -16 }, { lat: 16, lng: -18 }];
-      }
-      return [M.wcaOffshore, { lat: 0, lng: -15 }];
-
+      return toEurope
+        ? [M.wcaOffshore, M.stHelena, { lat: 8, lng: -16 }, { lat: 16, lng: -18 }]
+        : [M.wcaOffshore, { lat: 0, lng: -15 }];
     case 60600: // Bight of Biafra
-      if (isBrazilQuadrant(destQuadrant) || destQuadrant === "rio-plata") {
-        return [M.biafraOffshore, { lat: -5, lng: -5 }, { lat: -8, lng: -17 }];
-      }
-      if (isWestwardQuadrant(destQuadrant)) {
-        return [M.biafraOffshore, { lat: 7, lng: -20 }, { lat: 8, lng: -38 }];
-      }
-      if (destQuadrant === "europe") {
-        return [M.biafraOffshore, { lat: 14, lng: -10 }, { lat: 25, lng: -14 }];
-      }
-      return [M.biafraOffshore, { lat: 0, lng: -10 }];
-
+      return toEurope
+        ? [M.biafraOffshore, { lat: 3, lng: -12 }, { lat: 14, lng: -19 }, { lat: 25, lng: -17 }]
+        : [M.biafraOffshore, { lat: 0, lng: -10 }];
     case 60500: // Bight of Benin
-      if (isBrazilQuadrant(destQuadrant) || destQuadrant === "rio-plata") {
-        return [M.beninOffshore, { lat: 0, lng: -10 }, { lat: -4, lng: -18 }];
-      }
-      if (isWestwardQuadrant(destQuadrant)) {
-        return [M.beninOffshore, { lat: 11, lng: -25 }, { lat: 14, lng: -42 }];
-      }
-      if (destQuadrant === "europe") {
-        return [M.beninOffshore, { lat: 16, lng: -10 }, { lat: 34, lng: -12 }];
-      }
-      return [M.beninOffshore, { lat: 5, lng: -15 }];
-
+      return toEurope
+        ? [M.beninOffshore, { lat: 3.5, lng: -12 }, { lat: 16, lng: -19 }, { lat: 34, lng: -12 }]
+        : [M.beninOffshore, { lat: 3, lng: -15 }];
     case 60400: // Gold Coast
-      if (isBrazilQuadrant(destQuadrant) || destQuadrant === "rio-plata") {
-        return [M.goldCoastOffshore, { lat: -2, lng: -14 }, { lat: -6, lng: -18 }];
-      }
-      if (isWestwardQuadrant(destQuadrant)) {
-        return [M.goldCoastOffshore, { lat: 9, lng: -28 }, { lat: 10, lng: -43 }];
-      }
-      if (destQuadrant === "europe") {
-        return [M.goldCoastOffshore, { lat: 16, lng: -12 }, { lat: 28, lng: -11 }];
-      }
-      return [M.goldCoastOffshore, { lat: 5, lng: -20 }];
-
+      return toEurope
+        ? [M.goldCoastOffshore, { lat: 4, lng: -12 }, { lat: 16, lng: -19 }, { lat: 28, lng: -15 }]
+        : [M.goldCoastOffshore, { lat: 3.5, lng: -20 }];
     case 60300: // Windward Coast
-      if (isBrazilQuadrant(destQuadrant) || destQuadrant === "rio-plata") {
-        return [M.windwardOffshore, { lat: -1, lng: -18 }, { lat: -5, lng: -20 }];
-      }
-      if (isWestwardQuadrant(destQuadrant)) {
-        return [M.windwardOffshore, { lat: 10, lng: -30 }, { lat: 12, lng: -45 }];
-      }
-      if (destQuadrant === "europe") {
-        return [M.windwardOffshore, { lat: 18, lng: -16 }, { lat: 31, lng: -13 }];
-      }
-      return [M.windwardOffshore, { lat: 5, lng: -25 }];
-
+      return toEurope
+        ? [M.windwardOffshore, { lat: 18, lng: -19 }, { lat: 31, lng: -13 }]
+        : [M.windwardOffshore, { lat: 5, lng: -25 }];
     case 60200: // Sierra Leone
-      if (isBrazilQuadrant(destQuadrant) || destQuadrant === "rio-plata") {
-        return [M.sierraLeoneOffshore, { lat: 2, lng: -20 }, { lat: -2, lng: -22 }];
-      }
-      if (isWestwardQuadrant(destQuadrant)) {
-        return [M.sierraLeoneOffshore, { lat: 13, lng: -35 }, { lat: 16, lng: -50 }];
-      }
-      if (destQuadrant === "europe") {
-        return [M.sierraLeoneOffshore, { lat: 20, lng: -20 }, { lat: 37, lng: -13 }];
-      }
-      return [M.sierraLeoneOffshore, { lat: 5, lng: -28 }];
-
+      return toEurope
+        ? [M.sierraLeoneOffshore, { lat: 20, lng: -20 }, { lat: 37, lng: -13 }]
+        : [M.sierraLeoneOffshore, { lat: 5, lng: -28 }];
     case 60100: // Senegambia
-      if (isBrazilQuadrant(destQuadrant) || destQuadrant === "rio-plata") {
-        return [M.senegambiaOffshore, M.capeVerde, { lat: 5, lng: -28 }, { lat: 0, lng: -24 }];
-      }
-      if (isWestwardQuadrant(destQuadrant)) {
-        return [M.senegambiaOffshore, M.capeVerde, { lat: 18, lng: -45 }];
-      }
-      if (destQuadrant === "europe") {
-        return [M.senegambiaOffshore, { lat: 28, lng: -18 }, { lat: 40, lng: -12 }];
-      }
-      return [M.senegambiaOffshore, M.capeVerde];
-
-    case 60900: // Other Africa / Interior — separate corridor from 60600
-      if (isBrazilQuadrant(destQuadrant) || destQuadrant === "rio-plata") {
-        return [M.otherAfricaCoast, { lat: 0, lng: 0 }, { lat: -7, lng: -8 }, { lat: -9, lng: -16 }];
-      }
-      if (isWestwardQuadrant(destQuadrant)) {
-        return [M.otherAfricaCoast, { lat: 2, lng: 0 }, { lat: 5, lng: -20 }, { lat: 6, lng: -36 }];
-      }
-      if (destQuadrant === "europe") {
-        return [M.otherAfricaCoast, { lat: 2, lng: 0 }, { lat: 12, lng: -10 }, { lat: 22, lng: -15 }];
-      }
-      return [M.otherAfricaCoast, { lat: 0, lng: 0 }, { lat: -2, lng: -10 }];
+      return toEurope
+        ? [M.senegambiaOffshore, { lat: 28, lng: -18 }, { lat: 40, lng: -12 }]
+        : [M.senegambiaOffshore, M.capeVerde];
+    case 60900: // Other Africa
+      return toEurope
+        ? [M.otherAfricaCoast, { lat: 2, lng: -12 }, { lat: 14, lng: -19 }, { lat: 22, lng: -18.5 }]
+        : [M.otherAfricaCoast, { lat: 0, lng: 0 }, { lat: -2, lng: -10 }];
 
     default:
       // Inter-American sources
@@ -177,7 +120,7 @@ function buildWaypointChain(sourceCode, destQuadrant) {
 
       // Brazilian sources
       if (srcQuadrant === "brazil-north" || srcQuadrant === "brazil-south") {
-        var srcCoord = regionCoords[sourceCode] || regionCoords[Math.floor(sourceCode/100)*100];
+        var srcCoord = _routeCoords(sourceCode);
         var farWest = srcCoord && srcCoord.lng < -42;
 
         if (destQuadrant === "rio-plata") {
@@ -335,16 +278,8 @@ function computeDynamicWaypoints(sourceCode, destCode, convergePt) {
   var cacheKey = sourceCode + ":" + destCode + ":" + Math.round(convergePt[0]) + ":" + Math.round(convergePt[1]);
   if (_waypointCache[cacheKey]) return _waypointCache[cacheKey];
 
-  // Prefer Rust classify_dest_quadrant if available
-  var destQuadrant = (typeof window.classify_dest_quadrant === 'function')
-      ? window.classify_dest_quadrant(destCode)
-      : classifyDestQuadrant(destCode);
-
-  // Prefer Rust build_waypoint_chain if available
-  var chainJson = (typeof window.build_waypoint_chain === 'function')
-      ? window.build_waypoint_chain(sourceCode, destQuadrant)
-      : null;
-  var chain = chainJson ? JSON.parse(chainJson) : buildWaypointChain(sourceCode, destQuadrant);
+  var destQuadrant = classifyDestQuadrant(destCode);
+  var chain = buildWaypointChain(sourceCode, destQuadrant);
   if (!chain || chain.length === 0) return null;
 
   // Land avoidance pass
@@ -386,416 +321,324 @@ function computeIAmConvergence(sourcePoints, destPt, destCode, destQuadrant) {
   return [convergeX, convergeY];
 }
 
-function euclidean(a, b) {
-  return Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2);
+
+// ===== Westward Atlantic stems (Africa -> Americas) =====
+//
+// Each stem is built from its own source and never turns back east:
+//   source -> offshore gate (just off its own coast) -> one cubic Bezier -> junction J
+// J is placed after the sources are known, west of every gate, so nothing has
+// to overshoot and hook back. Southeast Africa rounds the Cape and passes
+// St Helena before joining. The trunk then runs J -> destination.
+
+// How each African region reaches open water.
+//   west:  step ~3 deg west of the source (coast faces west)
+//   south: drop to a per-region "lane" latitude (coast faces south, Gulf of Guinea)
+// Lane latitudes step down from west to east so stems nest instead of crossing.
+var AFRICA_GATE_RULES = {
+  60100: { mode: "west", maxLng: -18.5 },
+  60200: { mode: "west", maxLng: -15 },
+  60300: { mode: "west", maxLng: -10, eastOf: -7.7, laneLat: 4.0 },
+  60400: { mode: "south", laneLat: 3.9 },
+  60500: { mode: "south", laneLat: 3.4 },
+  60600: { mode: "south", laneLat: 2.9 },
+  60700: { mode: "west", maxLng: 10.5 },
+  60900: { mode: "south", laneLat: 1.8 }   // anchor sits offshore, south of the lane
+};
+
+// Southeast Africa: down the Mozambique Channel, round the Cape, up to St Helena.
+var CAPE_ROUTE = [
+  { lat: -13, lng: 42 },
+  { lat: -21.5, lng: 38.5 },
+  { lat: -27.5, lng: 35 },
+  { lat: -34, lng: 28.5 },
+  { lat: -36, lng: 20 },
+  { lat: -32.5, lng: 12 },
+  { lat: -15.97, lng: -5.71 }
+];
+
+// Gulf of Guinea lanes run west to this longitude (past Cape Palmas) before
+// turning for the junction, so they stay south of the Windward Coast stem.
+var GULF_LANE_END_LNG = -11.5;
+
+var STEM_FAN_SPACING = 3;   // px between neighbouring stems where they join the trunk
+var STEM_FAN_MAX = 14;
+var STEM_ARRIVAL_REACH = 22; // px, longest straight run-in to the junction      // px, total spread at the junction
+
+function isAfricanCode(code) {
+  return code >= 60000 && code < 70000;
 }
 
-function discreteFrechet(P, Q) {
-  var n = P.length, m = Q.length;
-  if (n === 0 || m === 0) return { distance: Infinity, coupling: [] };
-  var dp = [];
-  for (var i = 0; i < n; i++) {
-    dp[i] = new Float64Array(m);
-    for (var j = 0; j < m; j++) {
-      var d = euclidean(P[i], Q[j]);
-      if (i === 0 && j === 0) dp[i][j] = d;
-      else if (i === 0) dp[i][j] = Math.max(dp[0][j-1], d);
-      else if (j === 0) dp[i][j] = Math.max(dp[i-1][0], d);
-      else dp[i][j] = Math.max(Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]), d);
+// Offshore gate for one source: the point where its stem meets open water.
+function africanGate(code, src) {
+  var region = Math.floor(code / 100) * 100;
+  var rule = AFRICA_GATE_RULES[region];
+  if (!rule) return null;
+  var south = rule.mode === "south" ||
+    (rule.eastOf !== undefined && src.lng > rule.eastOf);
+  if (south) {
+    return { lat: Math.min(src.lat - 0.3, rule.laneLat), lng: src.lng - 1, lane: true };
+  }
+  return { lat: src.lat - 0.3, lng: Math.min(src.lng - 3, rule.maxLng) };
+}
+
+// Geographic points from the source to the place its Bezier starts.
+function stemPrefix(code) {
+  var src = _routeCoords(code);
+  if (!src) return null;
+  var region = Math.floor(code / 100) * 100;
+  var pts = [{ lat: src.lat, lng: src.lng }];
+  if (region === 60800) {
+    for (var i = 0; i < CAPE_ROUTE.length; i++) {
+      var wp = CAPE_ROUTE[i];
+      var last = pts[pts.length - 1];
+      // Only waypoints still ahead of the ship: further west, and further
+      // south until the Cape is rounded.
+      if (wp.lng >= last.lng - 1) continue;
+      if (wp.lng > 19 && wp.lat >= last.lat) continue;
+      pts.push(wp);
+    }
+    return pts;
+  }
+  var gate = africanGate(code, src);
+  if (gate) {
+    pts.push(gate);
+    // Only lanes north of the equator need to clear Cape Palmas; a source
+    // further south turns for the junction straight from its gate.
+    if (gate.lane && gate.lat > 0 && gate.lng > GULF_LANE_END_LNG + 1) {
+      pts.push({ lat: gate.lat, lng: GULF_LANE_END_LNG });
     }
   }
-  // Backtrack coupling
-  var coupling = [];
-  var i = n - 1, j = m - 1;
-  coupling.push([i, j]);
-  while (i > 0 || j > 0) {
-    if (i === 0) { j--; }
-    else if (j === 0) { i--; }
-    else {
-      var candidates = [
-        [i-1, j-1, dp[i-1][j-1]],
-        [i-1, j, dp[i-1][j]],
-        [i, j-1, dp[i][j-1]]
-      ];
-      candidates.sort(function(a, b) { return a[2] - b[2]; });
-      i = candidates[0][0];
-      j = candidates[0][1];
-    }
-    coupling.push([i, j]);
-  }
-  coupling.reverse();
-  return { distance: dp[n-1][m-1], coupling: coupling };
+  return pts;
 }
 
-var STEM_MIN_SPACING = 12;
+var _landBounds = null;
+var _landBoundsFor = null;
 
-// ===== Spine-and-Ribbon System for Non-Crossing Stems =====
-
-function taperAlpha(t) {
-  t = Math.max(0, Math.min(1, t));
-  return 1 - 3 * t * t + 2 * t * t * t;
+// Point-on-land test with a bounding-box reject before d3.geoContains.
+function isLandFast(lng, lat) {
+  var feats = window._landFeatures;
+  if (!feats || typeof d3 === "undefined") return false;
+  if (_landBoundsFor !== feats) {
+    _landBounds = feats.map(function(f) { return d3.geoBounds(f); });
+    _landBoundsFor = feats;
+  }
+  for (var i = 0; i < feats.length; i++) {
+    var b = _landBounds[i];
+    if (lat < b[0][1] || lat > b[1][1]) continue;
+    // Bounds that wrap the antimeridian have west > east.
+    if (b[0][0] <= b[1][0] ? (lng < b[0][0] || lng > b[1][0])
+                           : (lng < b[0][0] && lng > b[1][0])) continue;
+    if (d3.geoContains(feats[i], [lng, lat])) return true;
+  }
+  return false;
 }
 
-function arcLengthReparameterize(spinePoints, numSamples) {
-  numSamples = numSamples || 40;
-  if (spinePoints.length < 2) return spinePoints.slice();
-  var cumLen = [0];
-  for (var i = 1; i < spinePoints.length; i++) {
-    var dx = spinePoints[i][0] - spinePoints[i - 1][0];
-    var dy = spinePoints[i][1] - spinePoints[i - 1][1];
-    cumLen.push(cumLen[i - 1] + Math.sqrt(dx * dx + dy * dy));
-  }
-  var totalLen = cumLen[cumLen.length - 1];
-  if (totalLen < 1) return spinePoints.slice();
-  var samples = [];
-  for (var s = 0; s <= numSamples; s++) {
-    var targetLen = (s / numSamples) * totalLen;
-    var segIdx = cumLen.length - 2;
-    for (var j = 1; j < cumLen.length; j++) {
-      if (cumLen[j] >= targetLen) { segIdx = j - 1; break; }
-    }
-    var segLen = cumLen[segIdx + 1] - cumLen[segIdx];
-    var t = segLen > 0 ? (targetLen - cumLen[segIdx]) / segLen : 0;
-    samples.push([
-      spinePoints[segIdx][0] + t * (spinePoints[segIdx + 1][0] - spinePoints[segIdx][0]),
-      spinePoints[segIdx][1] + t * (spinePoints[segIdx + 1][1] - spinePoints[segIdx][1])
-    ]);
-  }
-  return samples;
+function _cubicAt(a, c1, c2, b, t) {
+  var u = 1 - t;
+  return [
+    u * u * u * a[0] + 3 * u * u * t * c1[0] + 3 * u * t * t * c2[0] + t * t * t * b[0],
+    u * u * u * a[1] + 3 * u * u * t * c1[1] + 3 * u * t * t * c2[1] + t * t * t * b[1]
+  ];
 }
 
-function computeFrenetFrame(samples) {
-  var n = samples.length;
-  var tangents = [];
-  var normals = [];
-  for (var i = 0; i < n; i++) {
-    var tx, ty;
-    if (i === 0) {
-      tx = samples[1][0] - samples[0][0];
-      ty = samples[1][1] - samples[0][1];
-    } else if (i === n - 1) {
-      tx = samples[n - 1][0] - samples[n - 2][0];
-      ty = samples[n - 1][1] - samples[n - 2][1];
-    } else {
-      tx = samples[i + 1][0] - samples[i - 1][0];
-      ty = samples[i + 1][1] - samples[i - 1][1];
-    }
-    var len = Math.sqrt(tx * tx + ty * ty);
-    if (len < 0.001) { tx = 1; ty = 0; len = 1; }
-    tx /= len;
-    ty /= len;
-    tangents.push([tx, ty]);
-    normals.push([-ty, tx]);
+// Control point of the quadratic trunk arc (same shape as generateArc).
+function trunkControlPoint(source, target, curveBias) {
+  var dx = target[0] - source[0];
+  var dy = target[1] - source[1];
+  var dist = Math.sqrt(dx * dx + dy * dy);
+  var curveAmount = Math.min(dist * 0.3, 100);
+  var mx = (source[0] + target[0]) / 2;
+  var my = (source[1] + target[1]) / 2;
+  var angle = Math.atan2(dy, dx);
+  if (curveBias === "south-atlantic") {
+    return [mx + Math.sin(angle) * curveAmount, my - Math.cos(angle) * curveAmount * 0.3];
   }
-  return { tangents: tangents, normals: normals };
+  return [mx - Math.sin(angle) * curveAmount,
+          my + Math.cos(angle) * curveAmount * 0.3 - curveAmount * 0.4];
 }
 
-function computeSpine(stemInfos, convergePt, destCode) {
-  if (!_projection || !_projection.invert) return null;
-  var destQuadrant = classifyDestQuadrant(destCode);
-  var groupA = stemInfos.filter(function(info) {
-    var src = Math.floor(info.sourceCode / 100) * 100;
-    return src !== 60800;
-  });
-  if (groupA.length === 0) return null;
-
-  // Find median source by latitude
-  var sorted = groupA.slice().sort(function(a, b) {
-    var scA = getCoords(a.sourceCode);
-    var scB = getCoords(b.sourceCode);
-    return (scA ? scA.lat : 0) - (scB ? scB.lat : 0);
-  });
-  var medianSource = sorted[Math.floor(sorted.length / 2)];
-
-  var chain = buildWaypointChain(medianSource.sourceCode, destQuadrant);
-  if (!chain || chain.length === 0) return null;
-  chain = avoidLand(chain, window._landFeatures);
-
-  // Centroid of Group A source positions (screen space)
-  var sumX = 0, sumY = 0;
-  for (var i = 0; i < groupA.length; i++) {
-    sumX += groupA[i].srcPt[0];
-    sumY += groupA[i].srcPt[1];
+// Where the stems meet. West of every gate, at least 10 deg east of the
+// destination, at a latitude that follows the destination.
+function planJunction(prefixes, dest) {
+  var minLng = Infinity;
+  for (var i = 0; i < prefixes.length; i++) {
+    var a = prefixes[i][prefixes[i].length - 1];
+    if (a.lng < minLng) minLng = a.lng;
   }
-  var centroid = [sumX / groupA.length, sumY / groupA.length];
-
-  // Spine: centroid -> projected waypoints -> convergePt
-  var spinePoints = [centroid];
-  for (var i = 0; i < chain.length; i++) {
-    var pp = _projection([chain[i].lng, chain[i].lat]);
-    if (pp) spinePoints.push(pp);
+  // Capped in the north so stems run west first and the trunk carries the
+  // turn toward North America, instead of stems hugging the African coast.
+  var lat = Math.max(-26, Math.min(13, dest.lat * 0.75));
+  var lng = minLng - 6;
+  // North of the Gulf of Guinea the junction must also clear the West African bulge.
+  if (lat > 2) lng = Math.min(lng, -25);
+  lng = Math.max(lng, dest.lng + 10);
+  if (lng > minLng - 3) {
+    // A source far out in the Atlantic (Cape Verde, St Helena): tighten up,
+    // as long as the junction still sits clear of the destination.
+    lng = minLng - 3;
+    if (lng < dest.lng + 4) return null;   // destination is not west of the sources
   }
-  spinePoints.push(convergePt);
-  return spinePoints;
+  return { lat: lat, lng: lng };
 }
 
-function computeRibbonOffsets(sortedInfos, spineSamples, frame, spacing, sign) {
-  var n = sortedInfos.length;
-  var maxAbsOffset = Math.abs((n - 1) / 2 * spacing);
-
-  // Compute curvature cap at each sample
-  var curvCap = [];
-  for (var k = 0; k < spineSamples.length; k++) {
-    if (k === 0 || k === spineSamples.length - 1) {
-      curvCap[k] = 1.0;
-      continue;
-    }
-    var dot = frame.tangents[k-1][0] * frame.tangents[k][0] +
-              frame.tangents[k-1][1] * frame.tangents[k][1];
-    dot = Math.max(-1, Math.min(1, dot));
-    var angle = Math.acos(dot);
-    var dx = spineSamples[k][0] - spineSamples[k-1][0];
-    var dy = spineSamples[k][1] - spineSamples[k-1][1];
-    var segLen = Math.sqrt(dx * dx + dy * dy);
-    var kappa = segLen > 0.001 ? angle / segLen : 0;
-    var R = kappa > 0.001 ? 1 / kappa : 1e6;
-    curvCap[k] = maxAbsOffset > 0 ? Math.min(1.0, R / maxAbsOffset) : 1.0;
+// One stem: Bezier from its gate (a) into the junction slot (jo), heading west
+// out of the gate and arriving along the trunk direction. Screen space.
+function _stemBezier(a, jo, trunkDir, heading, southPush, pull) {
+  var dx = a[0] - jo[0];              // > 0: the junction is west of the gate
+  var dy = jo[1] - a[1];
+  var c1;
+  if (heading) {
+    // Carry on along the course the stem already has (Cape route).
+    var jl = Math.sqrt(dx * dx + dy * dy) || 1;
+    var hx = heading[0] - dx / jl, hy = heading[1] + dy / jl;
+    var hl = Math.sqrt(hx * hx + hy * hy) || 1;
+    c1 = [a[0] + hx / hl * dx * 0.4, a[1] + hy / hl * dx * 0.4 + southPush];
+  } else {
+    // Leave heading west; lean toward the junction when it lies far to the
+    // north or south, so a short hop west is not followed by a right-angle turn.
+    var lean = Math.max(0, Math.min(1, (Math.abs(dy) / dx - 1) / 2));
+    // Long stems hold their latitude for longer, so they pass outside the
+    // shorter stems that join from nearer the junction.
+    var hold = Math.max(0.4, Math.min(0.7, 0.4 + (dx - 60) / 220));
+    c1 = [a[0] - dx * hold, a[1] + dy * 0.3 * lean + southPush];
   }
-
-  // Smooth the cap to avoid abrupt transitions (3-point moving average)
-  var smoothCap = curvCap.slice();
-  for (var k = 1; k < curvCap.length - 1; k++) {
-    smoothCap[k] = (curvCap[k-1] + curvCap[k] + curvCap[k+1]) / 3;
-  }
-
-  var ribbons = [];
-  for (var i = 0; i < n; i++) {
-    var d_i = sign * (i - (n - 1) / 2) * spacing;
-    var ribbonPts = [];
-    for (var k = 0; k < spineSamples.length; k++) {
-      var t = k / (spineSamples.length - 1);
-      var alpha = taperAlpha(t) * smoothCap[k];
-      ribbonPts.push([
-        spineSamples[k][0] + d_i * alpha * frame.normals[k][0],
-        spineSamples[k][1] + d_i * alpha * frame.normals[k][1]
-      ]);
-    }
-    ribbons.push({ info: sortedInfos[i], points: ribbonPts, offset: d_i });
-  }
-  return ribbons;
+  // Capped so a stem from far away cannot swing wide of its neighbours on arrival.
+  var reach = Math.min(dx * 0.35, STEM_ARRIVAL_REACH) * pull;
+  var c2 = [jo[0] - trunkDir[0] * reach, jo[1] - trunkDir[1] * reach];
+  c1[0] = Math.min(Math.max(c1[0], jo[0]), a[0]);
+  c2[0] = Math.min(Math.max(c2[0], jo[0]), a[0]);
+  var pts = [];
+  for (var s = 1; s <= 20; s++) pts.push(_cubicAt(a, c1, c2, jo, s / 20));
+  return pts;
 }
 
-function computeJunction(capeEndPt, spineSamples, frame, landFeatures) {
-  var maxIdx = Math.floor(spineSamples.length * 0.7);
-  var bestIdx = Math.floor(spineSamples.length * 0.3);
-  var bestScore = -Infinity;
-  for (var k = 1; k <= maxIdx; k++) {
-    var dx = spineSamples[k][0] - capeEndPt[0];
-    var dy = spineSamples[k][1] - capeEndPt[1];
-    var len = Math.sqrt(dx * dx + dy * dy);
-    if (len < 1) continue;
-    dx /= len; dy /= len;
-    var alignment = Math.abs(dx * frame.tangents[k][0] + dy * frame.tangents[k][1]);
-    if (_projection && _projection.invert && landFeatures) {
-      var geo = _projection.invert(spineSamples[k]);
-      if (geo) {
-        var onLand = false;
-        for (var f = 0; f < landFeatures.length; f++) {
-          if (d3.geoContains(landFeatures[f], [geo[0], geo[1]])) { onLand = true; break; }
-        }
-        if (onLand) continue;
-      }
-    }
-    if (alignment > bestScore) { bestScore = alignment; bestIdx = k; }
+function _countLandHits(pts) {
+  if (!window._landFeatures || !_projection.invert) return 0;
+  var hits = 0;
+  // Skip the last sample: it is the junction, checked on its own.
+  for (var i = 1; i < pts.length - 1; i++) {
+    var geo = _projection.invert(pts[i]);
+    if (geo && isLandFast(geo[0], geo[1])) hits++;
   }
-  return bestIdx;
+  return hits;
 }
 
-function taperAlpha60800(t, tJ) {
-  if (t < tJ || tJ >= 1) return 0;
-  return taperAlpha((t - tJ) / (1 - tJ));
+// Drop any point that would step back east, so the stem only ever moves west.
+function _keepWestward(pts) {
+  var out = [pts[0]];
+  for (var i = 1; i < pts.length; i++) {
+    if (pts[i][0] <= out[out.length - 1][0]) out.push(pts[i]);
+  }
+  return out;
 }
 
-function ribbonToGeoWaypoints(screenPts) {
-  var geoWps = [];
-  var lastX = -Infinity, lastY = -Infinity;
-  for (var j = 0; j < screenPts.length; j++) {
-    var dx = screenPts[j][0] - lastX;
-    var dy = screenPts[j][1] - lastY;
-    if (Math.sqrt(dx * dx + dy * dy) < 10 && j < screenPts.length - 1) continue;
-    var inv = _projection.invert(screenPts[j]);
-    if (inv) {
-      geoWps.push({ lat: inv[1], lng: inv[0] });
-      lastX = screenPts[j][0];
-      lastY = screenPts[j][1];
-    }
-  }
-  return geoWps;
+// Join source -> gate -> curve without a sharp corner at the gate: the gate
+// vertex is replaced by two points that cut the corner.
+function _roundGateCorner(pts) {
+  if (pts.length < 4) return pts;
+  var src = pts[0], gate = pts[1], next = pts[2];
+  var nl = Math.sqrt((next[0] - gate[0]) * (next[0] - gate[0]) + (next[1] - gate[1]) * (next[1] - gate[1])) || 1;
+  var cut = Math.min(0.5, 14 / nl);   // cut at most ~14px along the outgoing leg
+  var inPt = [src[0] * 0.3 + gate[0] * 0.7, src[1] * 0.3 + gate[1] * 0.7];
+  var outPt = [gate[0] + (next[0] - gate[0]) * cut, gate[1] + (next[1] - gate[1]) * cut];
+  return [src, inPt, outPt].concat(pts.slice(2));
 }
 
-function ribbonToScreenWaypoints(screenPts) {
-  var result = [];
-  var lastX = -Infinity, lastY = -Infinity;
-  for (var j = 0; j < screenPts.length; j++) {
-    var dx = screenPts[j][0] - lastX;
-    var dy = screenPts[j][1] - lastY;
-    if (Math.sqrt(dx * dx + dy * dy) < 10 && j < screenPts.length - 1) continue;
-    result.push([screenPts[j][0], screenPts[j][1]]);
-    lastX = screenPts[j][0];
-    lastY = screenPts[j][1];
-  }
-  return result;
+function _smoothPath(pts) {
+  return d3.line().curve(d3.curveCatmullRom.alpha(0.5))(pts);
 }
 
-function computeRibbonStems(stemInfos, convergePt, destCode) {
-  if (!stemInfos || stemInfos.length < 2) return;
-  if (!_projection || !_projection.invert) return;
+// Plan every stem into one destination. Returns null when the destination is
+// not west of the sources (Europe, Africa, Atlantic islands) so the caller can
+// fall back to waypoint chains.
+//   returns { junction: [x,y], trunk: "M..", stems: { code: "M.." },
+//             points: { code: [[x,y]..] }, order: [codes north->south] }
+function planAtlanticStems(sourceCodes, destCode, yShift, trunkBias) {
+  if (typeof _projection === "undefined" || !_projection) return null;
+  var dest = _routeCoords(destCode);
+  if (!dest || isAfricanCode(destCode) || dest.lng > -30) return null;
+  var destPt = _projection([dest.lng, dest.lat]);
+  if (!destPt) return null;
 
-  // Only apply ribbon to transatlantic African sources
-  var hasAfrican = stemInfos.some(function(info) {
-    var src = Math.floor(info.sourceCode / 100) * 100;
-    return src >= 60100 && src <= 60900;
-  });
-  if (!hasAfrican) return;
-
-  var destQuadrant = classifyDestQuadrant(destCode);
-
-  // Separate Group A (West Coast) and 60800 (SE Africa)
-  var groupA = [];
-  var se60800 = null;
-  for (var i = 0; i < stemInfos.length; i++) {
-    var src = Math.floor(stemInfos[i].sourceCode / 100) * 100;
-    if (src === 60800) { se60800 = stemInfos[i]; }
-    else { groupA.push(stemInfos[i]); }
+  var stems = [];
+  for (var i = 0; i < sourceCodes.length; i++) {
+    if (!isAfricanCode(sourceCodes[i])) return null;
+    var prefix = stemPrefix(sourceCodes[i]);
+    if (!prefix) return null;
+    stems.push({ code: sourceCodes[i], prefix: prefix });
   }
-  if (groupA.length === 0) return;
+  if (stems.length === 0) return null;
 
-  // Sort Group A north-to-south (matching map-flows.js sort)
-  groupA.sort(function(a, b) {
-    var scA = getCoords(a.sourceCode);
-    var scB = getCoords(b.sourceCode);
-    return (scB ? scB.lat : 0) - (scA ? scA.lat : 0);
+  var J = planJunction(stems.map(function(s) { return s.prefix; }), dest);
+  if (!J) return null;
+
+  // North to south along the coast, Southeast Africa last, so stems nest.
+  stems.sort(function(a, b) {
+    var ra = Math.floor(a.code / 100) * 100 === 60800;
+    var rb = Math.floor(b.code / 100) * 100 === 60800;
+    if (ra !== rb) return ra ? 1 : -1;
+    var pa = a.prefix[a.prefix.length - 1], pb = b.prefix[b.prefix.length - 1];
+    return (pb.lat - pa.lat) || (pa.lng - pb.lng);
   });
 
-  // Step 1: Compute spine
-  var spinePoints = computeSpine(stemInfos, convergePt, destCode);
-  if (!spinePoints || spinePoints.length < 2) return;
+  var best = null;
+  // If stems still touch land, move the junction west and try again.
+  for (var attempt = 0; attempt < 5; attempt++) {
+    var jGeo = { lat: J.lat, lng: Math.max(J.lng - attempt * 4, dest.lng + 10) };
+    if (attempt > 0 && isLandFast(jGeo.lng, jGeo.lat)) continue;
+    var jPt = _projection([jGeo.lng, jGeo.lat]);
+    jPt = [jPt[0], jPt[1] + (yShift || 0)];
+    var ctrl = trunkControlPoint(jPt, destPt, trunkBias);
+    var tdx = ctrl[0] - jPt[0], tdy = ctrl[1] - jPt[1];
+    var tlen = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+    var trunkDir = [tdx / tlen, tdy / tlen];
+    // Normal to the trunk, pointing to the northern side.
+    var normal = trunkDir[0] <= 0 ? [trunkDir[1], -trunkDir[0]] : [-trunkDir[1], trunkDir[0]];
+    if (normal[1] > 0) normal = [-normal[0], -normal[1]];
+    var n = stems.length;
+    var spacing = n > 1 ? Math.min(STEM_FAN_SPACING, STEM_FAN_MAX / (n - 1)) : 0;
 
-  // Step 2: Arc-length reparameterize (prefer Rust for numeric accuracy)
-  var NUM_SAMPLES = 80;
-  var spineSamples;
-  try {
-    spineSamples = (typeof window.arc_length_reparameterize === 'function')
-      ? JSON.parse(window.arc_length_reparameterize(JSON.stringify(spinePoints), NUM_SAMPLES))
-      : null;
-  } catch(e) { spineSamples = null; }
-  spineSamples = spineSamples || arcLengthReparameterize(spinePoints, NUM_SAMPLES);
-
-  var frame;
-  try {
-    frame = (typeof window.compute_frenet_frame === 'function')
-      ? JSON.parse(window.compute_frenet_frame(JSON.stringify(spineSamples)))
-      : null;
-  } catch(e) { frame = null; }
-  frame = frame || computeFrenetFrame(spineSamples);
-
-  // Step 3: Determine offset sign so offsets match source spread direction
-  var firstSrc = groupA[0].srcPt;
-  var lastSrc = groupA[groupA.length - 1].srcPt;
-  var spreadDx = lastSrc[0] - firstSrc[0];
-  var spreadDy = lastSrc[1] - firstSrc[1];
-  var dot = spreadDx * frame.normals[0][0] + spreadDy * frame.normals[0][1];
-  var sign = dot >= 0 ? 1 : -1;
-
-  // Step 4: Compute ribbon offsets
-  var spacing = STEM_MIN_SPACING;
-  var ribbons = computeRibbonOffsets(groupA, spineSamples, frame, spacing, sign);
-
-  // Land check with retry (reduce spacing if ribbons cross land)
-  for (var attempt = 0; attempt < 3; attempt++) {
-    var anyOnLand = false;
-    if (window._landFeatures && _projection.invert) {
-      for (var r = 0; r < ribbons.length && !anyOnLand; r++) {
-        for (var k = Math.floor(ribbons[r].points.length * 0.15);
-             k < Math.floor(ribbons[r].points.length * 0.85) && !anyOnLand; k += 3) {
-          var geo = _projection.invert(ribbons[r].points[k]);
-          if (geo && isPointOnLand(geo[1], geo[0], window._landFeatures)) {
-            anyOnLand = true;
-          }
-        }
+    var totalHits = 0;
+    var paths = {}, points = {}, pushes = {};
+    for (var s = 0; s < n; s++) {
+      var pre = stems[s].prefix.map(function(p) { return _projection([p.lng, p.lat]); });
+      var a = pre[pre.length - 1];
+      var off = ((n - 1) / 2 - s) * spacing;
+      var jo = [jPt[0] + normal[0] * off, jPt[1] + normal[1] * off];
+      var heading = null;
+      if (Math.floor(stems[s].code / 100) * 100 === 60800 && pre.length > 1) {
+        var prev = pre[pre.length - 2];
+        var hl = Math.sqrt((a[0] - prev[0]) * (a[0] - prev[0]) + (a[1] - prev[1]) * (a[1] - prev[1])) || 1;
+        heading = [(a[0] - prev[0]) / hl, (a[1] - prev[1]) / hl];
       }
-    }
-    if (!anyOnLand) break;
-    spacing *= 0.8;
-    ribbons = computeRibbonOffsets(groupA, spineSamples, frame, spacing, sign);
-  }
-
-  // Step 5: Cache waypoints for each Group A stem
-  var SNAP_THRESHOLD = 4; // pixels — snap ribbon points to spine when offset is tiny
-  for (var i = 0; i < ribbons.length; i++) {
-    var ribbon = ribbons[i];
-    var info = ribbon.info;
-    // Ribbon waypoints: skip last point (it equals convergePt since taper→0)
-    var screenPts = [];
-    for (var k = 0; k < ribbon.points.length - 1; k++) {
-      var t = k / (spineSamples.length - 1);
-      var alpha = taperAlpha(t);
-      var effectiveOffset = Math.abs(ribbon.offset * alpha);
-      if (effectiveOffset < SNAP_THRESHOLD) {
-        screenPts.push(spineSamples[k]); // snap to spine
-      } else {
-        screenPts.push(ribbon.points[k]);
+      var curve = null, curveHits = Infinity, usedK = 0;
+      // Bend further south, then shorten the approach, until the stem is at sea.
+      for (var k = 0; k < 8 && curveHits > 0; k++) {
+        var cand = _stemBezier(a, jo, trunkDir, heading, k * 7, k < 4 ? 1 : 0.4);
+        var h = _countLandHits(cand);
+        if (h < curveHits) { curve = cand; curveHits = h; usedK = k; }
       }
+      totalHits += curveHits;
+      pushes[stems[s].code] = usedK;
+      var pts = _keepWestward(heading ? pre.concat(curve.slice(2))
+        : _roundGateCorner(pre.concat(pre.length > 2 ? curve : curve.slice(2))));
+      points[stems[s].code] = pts;
+      paths[stems[s].code] = _smoothPath(pts);
     }
-    var screenWps = ribbonToScreenWaypoints(screenPts);
-    var cacheKey = info.sourceCode + ":" + destCode + ":" +
-      Math.round(convergePt[0]) + ":" + Math.round(convergePt[1]);
-    _waypointCache[cacheKey] = { _screen: true, points: screenWps };
-  }
-
-  // Step 6: Handle 60800 (SE Africa) junction
-  if (se60800) {
-    var chain60800 = buildWaypointChain(60800, destQuadrant);
-    if (chain60800 && chain60800.length > 0) {
-      chain60800 = avoidLand(chain60800, window._landFeatures);
-      var lastWp = chain60800[chain60800.length - 1];
-      var capeEndPt = _projection([lastWp.lng, lastWp.lat]);
-      if (capeEndPt) {
-        var jIdx = computeJunction(capeEndPt, spineSamples, frame, window._landFeatures);
-        var tJ = jIdx / (spineSamples.length - 1);
-
-        // 60800 gets the last offset position
-        var totalStems = groupA.length + 1;
-        var d_60800 = sign * (groupA.length - (totalStems - 1) / 2) * spacing;
-
-        // Junction target with offset
-        var junctionTarget = [
-          spineSamples[jIdx][0] + d_60800 * frame.normals[jIdx][0],
-          spineSamples[jIdx][1] + d_60800 * frame.normals[jIdx][1]
-        ];
-
-        // Build ribbon segment from junction to convergePt
-        var ribbonSeg = [];
-        for (var k = jIdx; k < spineSamples.length - 1; k++) {
-          var t = k / (spineSamples.length - 1);
-          var alpha = taperAlpha60800(t, tJ);
-          var effectiveOffset = Math.abs(d_60800 * alpha);
-          if (effectiveOffset < SNAP_THRESHOLD) {
-            ribbonSeg.push(spineSamples[k].slice());
-          } else {
-            ribbonSeg.push([
-              spineSamples[k][0] + d_60800 * alpha * frame.normals[k][0],
-              spineSamples[k][1] + d_60800 * alpha * frame.normals[k][1]
-            ]);
-          }
-        }
-
-        // Full 60800 screen path: cape waypoints → junction → ribbon segment
-        var fullScreen = [];
-        for (var w = 0; w < chain60800.length; w++) {
-          var pp = _projection([chain60800[w].lng, chain60800[w].lat]);
-          if (pp) fullScreen.push(pp);
-        }
-        fullScreen.push(junctionTarget);
-        for (var k = 0; k < ribbonSeg.length; k++) {
-          fullScreen.push(ribbonSeg[k]);
-        }
-
-        var screenWps = ribbonToScreenWaypoints(fullScreen);
-        var cacheKey = se60800.sourceCode + ":" + destCode + ":" +
-          Math.round(convergePt[0]) + ":" + Math.round(convergePt[1]);
-        _waypointCache[cacheKey] = { _screen: true, points: screenWps };
-      }
+    if (!best || totalHits < best.hits) {
+      best = {
+        hits: totalHits,
+        junction: jPt,
+        junctionGeo: jGeo,
+        trunk: "M " + jPt[0] + "," + jPt[1] + " Q " + ctrl[0] + "," + ctrl[1] +
+               " " + destPt[0] + "," + destPt[1],
+        stems: paths,
+        points: points,
+        pushes: pushes,
+        order: stems.map(function(s) { return s.code; })
+      };
     }
+    if (totalHits === 0) break;
   }
+  return best;
 }

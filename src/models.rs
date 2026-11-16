@@ -111,3 +111,15 @@ pub struct YearlySourceFlow {
     pub embarked: f64,
     pub dataset: String,
 }
+
+/// An African embarkation place (MJBYPTIMP) with totals for a time range.
+/// `is_unspecified` marks the codebook's xx99 "port unspecified" codes.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct OriginInfo {
+    pub code: i64,
+    pub name: String,
+    pub region: i64,
+    pub total_embarked: f64,
+    pub voyage_count: i64,
+    pub is_unspecified: bool,
+}

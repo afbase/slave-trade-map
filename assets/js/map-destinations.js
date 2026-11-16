@@ -1,5 +1,6 @@
 // Render destination dots on the map.
 function renderDestinations(destinationsJson, mode) {
+  window.__destMode = mode;
   if (!_dotsGroup) return;
   _dotsGroup.selectAll("*").remove();
 
@@ -20,7 +21,10 @@ function renderDestinations(destinationsJson, mode) {
   destinations.forEach(function(dest) {
     var coords = getCoords(dest.code);
     if (!coords) return;
-    if (dest.code >= 60000 && dest.code < 70000) return;
+    // Voyages that landed in Africa (e.g. liberated Africans at Sierra Leone)
+    // are an optional layer with its own marker style.
+    var isAfricanLanding = dest.code >= 60000 && dest.code < 70000;
+    if (isAfricanLanding && !window.__showAfricanLandings) return;
 
     var pt = _projection([coords.lng, coords.lat]);
     if (!pt || pt[0] == null || pt[1] == null) return;
@@ -33,12 +37,14 @@ function renderDestinations(destinationsJson, mode) {
     var isDark = document.body.classList.contains('dark');
     var dot = _dotsGroup
       .append("circle")
-      .attr("class", "dest-dot")
+      .attr("class", isAfricanLanding ? "landing-dot" : "dest-dot")
       .attr("cx", x)
       .attr("cy", y)
       .attr("r", r / currentSK)
       .attr("data-base-r", r)
-      .attr("fill", cs.getPropertyValue('--color-accent').trim() || "#5a7a8a")
+      .attr("fill", isAfricanLanding
+        ? (cs.getPropertyValue('--color-landing').trim() || "#7a4a8a")
+        : (cs.getPropertyValue('--color-accent').trim() || "#5a7a8a"))
       .attr("stroke", cs.getPropertyValue('--color-dot-stroke').trim() || (isDark ? "#3a4258" : "#fff"))
       .attr("stroke-width", 1 / currentK)
       .style("cursor", "pointer");
@@ -80,6 +86,7 @@ function renderDestinations(destinationsJson, mode) {
           statsHtml += '<br><span style="color:#8a6828">TASTD: ' + Math.round(dest.ta_embarked).toLocaleString() + '</span>';
           statsHtml += ' · <span style="color:#2a6a7a">IAm: ' + Math.round(dest.iam_embarked).toLocaleString() + '</span>';
         }
+        if (isAfricanLanding) statsHtml += '<br><em>Landed in Africa</em>';
         _tooltipDiv.innerHTML =
           '<div class="tt-route">' + dest.name + '</div>' +
           '<div class="tt-stat">' + statsHtml + '</div>';
@@ -177,4 +184,12 @@ function renderDestinations(destinationsJson, mode) {
       placedBoxes.push(box);
     }
   });
+
+  // Destination and origin labels share one collision pass.
+  if (typeof recomputeLabelVisibility === 'function') recomputeLabelVisibility(currentK);
+}
+
+function setAfricanLandings(show) {
+  window.__showAfricanLandings = !!show;
+  if (window.__destData) renderDestinations(JSON.stringify(window.__destData), window.__destMode || "regions");
 }

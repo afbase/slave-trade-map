@@ -43,6 +43,8 @@
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <script src="../assets/js/coords.js"></script>
+<script>var _projection = null;</script>
+<script src="../assets/js/map-helpers.js"></script>
 <script src="../assets/js/route-planner.js"></script>
 <script>
 (function() {
@@ -93,6 +95,29 @@
 
     // Convergence point (simplified)
     var convergePt = [destPt[0] - 60, destPt[1]];
+
+    // Africa -> Americas routes come from planAtlanticStems (the app's planner).
+    window._projection = _projection = projection;
+    var plan = planAtlanticStems(SOURCES, destCode, 0, null);
+    if (plan) {
+      SOURCES.forEach(function(src, idx) {
+        if (!plan.stems[src]) return;
+        routeGroup.append("path")
+          .attr("class", "route")
+          .attr("d", plan.stems[src])
+          .attr("stroke", SOURCE_COLORS[idx])
+          .attr("stroke-width", 2.5);
+      });
+      routeGroup.append("path")
+        .attr("class", "route")
+        .attr("d", plan.trunk)
+        .attr("stroke", "#333")
+        .attr("stroke-width", 4);
+      dotGroup.append("circle")
+        .attr("class", "waypoint-dot")
+        .attr("cx", plan.junction[0]).attr("cy", plan.junction[1]).attr("r", 4);
+      return;
+    }
 
     SOURCES.forEach(function(src, idx) {
       var sc = regionCoords[src];

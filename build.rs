@@ -21,6 +21,7 @@ fn main() {
     let mut labels_out = String::from("variable,code,label\n");
     let needed_vars = [
         "MAJBYIMP",
+        "MJBYPTIMP",
         "MJSELIMP",
         "MJSLPTIMP",
         "PLAC1TRA",
@@ -158,6 +159,7 @@ fn main() {
     let headers = reader.headers().expect("no headers").clone();
     let col = |name: &str| -> Option<usize> { headers.iter().position(|h| h == name) };
     let idx_majbyimp = col("MAJBYIMP").expect("MAJBYIMP not found");
+    let idx_mjbyptimp = col("MJBYPTIMP").expect("MJBYPTIMP not found");
     let idx_mjselimp = col("MJSELIMP").expect("MJSELIMP not found");
     let idx_mjslptimp = col("MJSLPTIMP").expect("MJSLPTIMP not found");
     let idx_slaximp = col("SLAXIMP").expect("SLAXIMP not found");
@@ -184,6 +186,12 @@ fn main() {
 
     let mut region_flows: HashMap<(i64, i64, i64), Agg> = HashMap::new();
     let mut port_flows: HashMap<(i64, i64, i64), Agg> = HashMap::new();
+
+    // Port-level origins: (embark_port, disembark_region, disembark_port, year).
+    // embark_port is MJBYPTIMP, the imputed principal port of purchase; its
+    // region (port / 100 * 100) always equals MAJBYIMP. 0 stands for "missing"
+    // on the destination side.
+    let mut origin_flows: HashMap<(i64, i64, i64, i64), Agg> = HashMap::new();
 
     let mut voyages_csv = String::from(
         "voyage_id,ship_name,captain_a,captain_b,captain_c,\
@@ -230,6 +238,20 @@ fn main() {
 
         if let Some(dp) = disembark_port {
             let entry = port_flows.entry((embark_region, dp, year)).or_default();
+            entry.embarked += embarked;
+            entry.disembarked += disembarked;
+            entry.voyages += 1;
+        }
+
+        if let Some(ep) = parse_code(record.get(idx_mjbyptimp).unwrap_or("")) {
+            let entry = origin_flows
+                .entry((
+                    ep,
+                    disembark_region.unwrap_or(0),
+                    disembark_port.unwrap_or(0),
+                    year,
+                ))
+                .or_default();
             entry.embarked += embarked;
             entry.disembarked += disembarked;
             entry.voyages += 1;
@@ -351,6 +373,28 @@ fn main() {
     fs::write(out_path.join("port_flows.csv"), &port_csv).expect("Cannot write port_flows.csv");
 
     fs::write(out_path.join("voyages.csv"), &voyages_csv).expect("Cannot write voyages.csv");
+
+    let mut origin_csv = String::from(
+        "embark_port,disembark_region,disembark_port,year,embarked,disembarked,voyages\n",
+    );
+    let mut origin_keys: Vec<_> = origin_flows.keys().cloned().collect();
+    origin_keys.sort();
+    let opt = |v: i64| if v == 0 { String::new() } else { v.to_string() };
+    for key in origin_keys {
+        let agg = &origin_flows[&key];
+        origin_csv.push_str(&format!(
+            "{},{},{},{},{},{},{}\n",
+            key.0,
+            opt(key.1),
+            opt(key.2),
+            key.3,
+            agg.embarked as i64,
+            agg.disembarked as i64,
+            agg.voyages
+        ));
+    }
+    fs::write(out_path.join("origin_flows.csv"), &origin_csv)
+        .expect("Cannot write origin_flows.csv");
 
     // ===== INTER-AMERICAN (I-Am) =====
     // I-Am1.0.csv is latin-1 encoded — read as bytes and convert
@@ -567,9 +611,10 @@ fn main() {
         .expect("Cannot write iam_voyages.csv");
 
     eprintln!(
-        "build.rs: TASTD — {} region flows, {} port flows | I-Am — {} region flows, {} port flows",
+        "build.rs: TASTD — {} region flows, {} port flows, {} origin-port flows | I-Am — {} region flows, {} port flows",
         region_flows.len(),
         port_flows.len(),
+        origin_flows.len(),
         iam_region_flows.len(),
         iam_port_flows.len()
     );

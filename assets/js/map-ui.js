@@ -80,6 +80,7 @@ function updateMapTheme() {
     _uiGroup.selectAll(".time-label")
       .attr("fill", cs.getPropertyValue('--color-text-muted').trim() || "#666");
     // Legend text
+    if (typeof renderOrigins === 'function') renderOrigins();
     _uiGroup.selectAll(".legend-group text")
       .attr("fill", function() {
         return d3.select(this).text() === "FLOW ORIGINS"
@@ -366,6 +367,11 @@ function updateMapTheme() {
 window.initMap = initMap;
 window.renderDestinations = renderDestinations;
 window.renderFlows = renderFlows;
+window.renderOriginFlows = renderOriginFlows;
+window.setOriginData = setOriginData;
+window.setOriginOptions = setOriginOptions;
+window.focusOrigin = focusOrigin;
+window.setAfricanLandings = setAfricanLandings;
 window.clearFlows = clearFlows;
 window.setTimeLabel = setTimeLabel;
 window.renderLegend = renderLegend;

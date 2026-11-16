@@ -73,6 +73,8 @@ function initMap() {
   var landGroup = _masterGroup.append("g").attr("class", "land-group");
   _flowGroup = _masterGroup.append("g").attr("class", "flows");
   window._flowGroup = _flowGroup;
+  // African embarkation markers: above the flow lines, below destination dots
+  _originsGroup = _masterGroup.append("g").attr("class", "origins");
   _dotsGroup = _masterGroup.append("g").attr("class", "dots");
 
   // Arrow marker
@@ -132,6 +134,7 @@ function initMap() {
       });
 
       window.mapReady = true;
+      if (typeof renderOrigins === 'function') renderOrigins();
     })
     .catch(function(err) {
       console.warn("Could not load world topology:", err);
@@ -145,17 +148,25 @@ function initMap() {
       _masterGroup.attr("transform", event.transform);
       var k = event.transform.k;
       var sk = Math.sqrt(k);
-      _masterGroup.selectAll(".dest-label")
+      // Origin labels are sized by renderOrigins() so that many can fit when zoomed in.
+      _masterGroup.selectAll(".dest-label:not(.origin-label)")
         .style("font-size", Math.max(6, 9 / sk) + "px");
       _masterGroup.selectAll(".ocean-label")
         .style("font-size", Math.max(8, 18 / sk) + "px");
       _masterGroup.selectAll(".continent-label")
         .style("font-size", Math.max(7, 12 / sk) + "px")
         .style("letter-spacing", Math.max(2, 4 / sk) + "px");
-      _masterGroup.selectAll(".dest-dot")
+      _masterGroup.selectAll(".dest-dot, .landing-dot")
         .each(function() {
           var baseR = +this.getAttribute("data-base-r") || 3.5;
           d3.select(this).attr("r", baseR / sk).attr("stroke-width", 1 / k);
+        });
+      // Origin markers keep their size between redraws; the debounced
+      // renderOrigins() below re-merges them for the new zoom level.
+      _masterGroup.selectAll(".origin-dot, .origin-bubble, .origin-ring")
+        .each(function() {
+          var baseR = +this.getAttribute("data-base-r") || 3;
+          d3.select(this).attr("r", baseR / sk);
         });
       _masterGroup.selectAll(".dest-dot-hitarea")
         .each(function() {
@@ -183,7 +194,11 @@ function initMap() {
       _masterGroup.selectAll(".graticule")
         .attr("stroke-width", 0.3 / k);
       if (_labelVisTimeout) clearTimeout(_labelVisTimeout);
-      _labelVisTimeout = setTimeout(function() { recomputeLabelVisibility(k); }, 150);
+      _labelVisTimeout = setTimeout(function() {
+        // Redraws origin markers for this zoom level, then re-runs label collision.
+        if (typeof renderOrigins === 'function') renderOrigins();
+        else recomputeLabelVisibility(k);
+      }, 150);
     });
 
   _svg.call(_zoom);
@@ -231,7 +246,9 @@ function recomputeLabelVisibility(k) {
   }
 
   labels.forEach(function(lbl) {
-    var textW = lbl.text.length * charWidth;
+    // Origin labels use their own (smaller) font; estimate width from it.
+    var cw = lbl.el.classed("origin-label") ? lbl.fontSize * 0.55 : charWidth;
+    var textW = lbl.text.length * cw;
     var textH = lbl.fontSize;
     var bx = lbl.anchor === "end" ? lbl.x - textW : lbl.x;
     var by = lbl.y - textH;

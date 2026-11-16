@@ -5,13 +5,16 @@
 //! individual voyage records across both the Transatlantic and Inter-American
 //! datasets.
 
-use crate::models::{DatasetMode, DestinationInfo, FlowData, VoyageRecord, YearlySourceFlow};
+use crate::models::{
+    DatasetMode, DestinationInfo, FlowData, OriginInfo, VoyageRecord, YearlySourceFlow,
+};
 use rusqlite::{params, Connection};
 use std::cell::RefCell;
 use std::rc::Rc;
 
 const REGION_FLOWS_CSV: &str = include_str!(concat!(env!("OUT_DIR"), "/region_flows.csv"));
 const PORT_FLOWS_CSV: &str = include_str!(concat!(env!("OUT_DIR"), "/port_flows.csv"));
+const ORIGIN_FLOWS_CSV: &str = include_str!(concat!(env!("OUT_DIR"), "/origin_flows.csv"));
 const LABELS_CSV: &str = include_str!(concat!(env!("OUT_DIR"), "/labels.csv"));
 const VOYAGES_CSV: &str = include_str!(concat!(env!("OUT_DIR"), "/voyages.csv"));
 const GEO_LABELS_CSV: &str = include_str!(concat!(env!("OUT_DIR"), "/geo_labels.csv"));
@@ -52,6 +55,20 @@ impl Database {
             );
             CREATE INDEX idx_pf_disembark ON port_flows(disembark_port, year);
             CREATE INDEX idx_pf_year ON port_flows(year);
+
+            -- Transatlantic flows keyed on the African port of purchase (MJBYPTIMP).
+            -- Destination columns are NULL when the source does not give them.
+            CREATE TABLE origin_flows (
+                embark_port INTEGER NOT NULL,
+                disembark_region INTEGER,
+                disembark_port INTEGER,
+                year INTEGER NOT NULL,
+                embarked INTEGER NOT NULL,
+                disembarked INTEGER NOT NULL,
+                voyages INTEGER NOT NULL
+            );
+            CREATE INDEX idx_of_embark ON origin_flows(embark_port, year);
+            CREATE INDEX idx_of_year ON origin_flows(year);
 
             CREATE TABLE labels (
                 variable TEXT NOT NULL,
@@ -194,6 +211,27 @@ impl Database {
                     r.get(3).unwrap().parse::<i64>()?,
                     r.get(4).unwrap().parse::<i64>()?,
                     r.get(5).unwrap().parse::<i64>()?,
+                ],
+            )?;
+        }
+
+        // Load origin (African port) flows
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(ORIGIN_FLOWS_CSV.as_bytes());
+        for result in rdr.records() {
+            let r = result?;
+            let opt = |idx: usize| -> Option<i64> { r.get(idx).unwrap_or("").parse::<i64>().ok() };
+            conn.execute(
+                "INSERT INTO origin_flows VALUES (?1,?2,?3,?4,?5,?6,?7)",
+                params![
+                    r.get(0).unwrap().parse::<i64>()?,
+                    opt(1),
+                    opt(2),
+                    r.get(3).unwrap().parse::<i64>()?,
+                    r.get(4).unwrap().parse::<i64>()?,
+                    r.get(5).unwrap().parse::<i64>()?,
+                    r.get(6).unwrap().parse::<i64>()?,
                 ],
             )?;
         }
@@ -604,6 +642,98 @@ impl Database {
                 Ok(rows)
             }
         }
+    }
+
+    /// List African embarkation places (MJBYPTIMP) with totals for the time range.
+    /// Transatlantic only: Inter-American voyages start in the Americas.
+    pub fn get_origin_ports(
+        &self,
+        year_min: i64,
+        year_max: i64,
+    ) -> anyhow::Result<Vec<OriginInfo>> {
+        let conn = self.conn.borrow();
+        let mut stmt = conn.prepare(
+            "SELECT o.embark_port,
+                    COALESCE(l.label, g.label, CAST(o.embark_port AS TEXT)),
+                    SUM(o.embarked),
+                    SUM(o.voyages)
+             FROM origin_flows o
+             LEFT JOIN labels l ON l.variable = 'MJBYPTIMP' AND l.code = o.embark_port
+             LEFT JOIN geo_labels g ON g.code = o.embark_port
+             WHERE o.year >= ?1 AND o.year <= ?2
+               AND o.embark_port >= 60000 AND o.embark_port < 70000
+             GROUP BY o.embark_port
+             ORDER BY SUM(o.embarked) DESC",
+        )?;
+        let rows = stmt
+            .query_map(params![year_min, year_max], |row| {
+                let code: i64 = row.get(0)?;
+                Ok(OriginInfo {
+                    code,
+                    name: row.get::<_, String>(1)?.trim().to_string(),
+                    region: code / 100 * 100,
+                    total_embarked: row.get(2)?,
+                    voyage_count: row.get(3)?,
+                    is_unspecified: code % 100 == 99,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    /// Where one African place's captives were taken: flows from `origin` to
+    /// each destination region (`by_region`) or destination port.
+    pub fn get_flows_from_origin(
+        &self,
+        origin: i64,
+        year_min: i64,
+        year_max: i64,
+        by_region: bool,
+    ) -> anyhow::Result<Vec<FlowData>> {
+        let conn = self.conn.borrow();
+        let (dest_col, dest_var) = if by_region {
+            ("disembark_region", "MJSELIMP")
+        } else {
+            ("disembark_port", "MJSLPTIMP")
+        };
+        let sql = format!(
+            "SELECT o.embark_port,
+                    COALESCE(sl.label, sg.label, CAST(o.embark_port AS TEXT)),
+                    o.{dest_col},
+                    COALESCE(dl.label, dg.label, CAST(o.{dest_col} AS TEXT)),
+                    SUM(o.embarked),
+                    SUM(o.disembarked),
+                    SUM(o.voyages),
+                    MIN(o.year),
+                    MAX(o.year)
+             FROM origin_flows o
+             LEFT JOIN labels sl ON sl.variable = 'MJBYPTIMP' AND sl.code = o.embark_port
+             LEFT JOIN geo_labels sg ON sg.code = o.embark_port
+             LEFT JOIN labels dl ON dl.variable = '{dest_var}' AND dl.code = o.{dest_col}
+             LEFT JOIN geo_labels dg ON dg.code = o.{dest_col}
+             WHERE o.embark_port = ?1 AND o.year >= ?2 AND o.year <= ?3
+               AND o.{dest_col} IS NOT NULL
+             GROUP BY o.{dest_col}
+             ORDER BY SUM(o.embarked) DESC"
+        );
+        let mut stmt = conn.prepare(&sql)?;
+        let rows = stmt
+            .query_map(params![origin, year_min, year_max], |row| {
+                Ok(FlowData {
+                    source_code: row.get(0)?,
+                    source_name: row.get::<_, String>(1)?.trim().to_string(),
+                    target_code: row.get(2)?,
+                    target_name: row.get::<_, String>(3)?.trim().to_string(),
+                    total_embarked: row.get(4)?,
+                    total_disembarked: row.get(5)?,
+                    voyage_count: row.get(6)?,
+                    first_year: row.get(7)?,
+                    last_year: row.get(8)?,
+                    dataset: "transatlantic".to_string(),
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
     }
 
     /// Get origin-flow breakdown for a destination region (grouped by embark region).
@@ -1134,6 +1264,78 @@ mod tests {
 
     fn test_db() -> Database {
         Database::new().expect("Database should initialize from embedded CSVs")
+    }
+
+    #[test]
+    fn origin_ports_are_port_level() {
+        let db = test_db();
+        let origins = db.get_origin_ports(1514, 1866).unwrap();
+        // The data has 170 named African places plus 9 "port unspecified" codes.
+        assert!(
+            origins.len() > 150,
+            "expected port-level origins, got {}",
+            origins.len()
+        );
+        assert!(origins.iter().all(|o| (60000..70000).contains(&o.code)));
+        assert!(origins.iter().all(|o| o.region == o.code / 100 * 100));
+        let luanda = origins
+            .iter()
+            .find(|o| o.code == 60734)
+            .expect("Luanda missing");
+        assert!(luanda.total_embarked > 1_000_000.0);
+        assert!(!luanda.is_unspecified);
+        assert!(origins.iter().any(|o| o.code == 60999 && o.is_unspecified));
+    }
+
+    #[test]
+    fn origin_port_totals_match_region_totals() {
+        // Named ports + "port unspecified" must add up to the region-level
+        // totals the flow lines are drawn from (same voyages, same variable family).
+        let db = test_db();
+        let conn = db.conn.borrow();
+        for region in [60100i64, 60400, 60500, 60700, 60900] {
+            let by_port: i64 = conn
+                .query_row(
+                    "SELECT SUM(embarked) FROM origin_flows
+                     WHERE embark_port / 100 * 100 = ?1 AND disembark_region IS NOT NULL",
+                    params![region],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            let by_region: i64 = conn
+                .query_row(
+                    "SELECT SUM(embarked) FROM region_flows WHERE embark_region = ?1",
+                    params![region],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            // Each table truncates per-row sums to integers, so allow rounding.
+            let diff = (by_port - by_region).abs();
+            assert!(
+                diff <= by_region / 1000 + 50,
+                "region {region}: ports sum {by_port} vs region {by_region}"
+            );
+        }
+    }
+
+    #[test]
+    fn flows_from_origin_by_region_and_port() {
+        let db = test_db();
+        let regions = db.get_flows_from_origin(60734, 1514, 1866, true).unwrap();
+        assert!(!regions.is_empty());
+        assert!(regions.iter().all(|f| f.source_code == 60734));
+        assert!(regions.iter().all(|f| f.target_code % 100 == 0));
+        let ports = db.get_flows_from_origin(60734, 1514, 1866, false).unwrap();
+        assert!(ports.len() >= regions.len());
+        // Luanda's captives went overwhelmingly to Brazil (5xxxx).
+        assert!(
+            regions[0].target_code / 10000 == 5,
+            "top: {}",
+            regions[0].target_code
+        );
+        let narrow = db.get_flows_from_origin(60734, 1700, 1710, true).unwrap();
+        let sum = |v: &[FlowData]| v.iter().map(|f| f.total_embarked).sum::<f64>();
+        assert!(sum(&narrow) < sum(&regions));
     }
 
     #[test]

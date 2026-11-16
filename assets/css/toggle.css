@@ -72,3 +72,9 @@
   color: var(--color-text-muted);
   line-height: 1;
 }
+
+/* Independent on/off buttons (not a one-of-many group) */
+.toggle-group.toggle-checks button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

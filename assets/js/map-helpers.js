@@ -94,16 +94,9 @@ function generateRoutedPath(sourceCode, srcPt, convergePt, destCode) {
     var dynamicWps = computeDynamicWaypoints(sourceCode, destCode, convergePt);
     if (dynamicWps) {
       var allPoints = [srcPt];
-      if (dynamicWps._screen) {
-        // Screen-space waypoints from ribbon system — no projection needed
-        for (var i = 0; i < dynamicWps.points.length; i++) {
-          allPoints.push(dynamicWps.points[i]);
-        }
-      } else {
-        for (var i = 0; i < dynamicWps.length; i++) {
-          var projected = _projection([dynamicWps[i].lng, dynamicWps[i].lat]);
-          if (projected) allPoints.push(projected);
-        }
+      for (var i = 0; i < dynamicWps.length; i++) {
+        var projected = _projection([dynamicWps[i].lng, dynamicWps[i].lat]);
+        if (projected) allPoints.push(projected);
       }
       allPoints.push(convergePt);
       return _multiSegPath(allPoints);

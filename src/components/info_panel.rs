@@ -42,7 +42,41 @@ pub fn InfoPanel() -> Element {
         div { class: "info-panel",
             h2 { "Flow Details" }
 
-            if let Some(dest_code) = (state.selected_dest)() {
+            if let Some(origin_code) = (state.selected_origin)() {
+                {
+                    let origin_info = state.origins
+                        .read()
+                        .iter()
+                        .find(|o| o.code == origin_code)
+                        .cloned();
+                    let fl: Vec<FlowData> = state.flows.read().clone();
+                    let voyages: i64 = fl.iter().map(|f| f.voyage_count).sum();
+                    let dest_kind = if (state.mode)() == "regions" { "regions" } else { "ports" };
+                    rsx! {
+                        if let Some(ref info) = origin_info {
+                            div { class: "dest-name", "{info.name}" }
+                            div { class: "origin-kind",
+                                if info.is_unspecified {
+                                    "African embarkation, port not named in the sources"
+                                } else {
+                                    "African embarkation port"
+                                }
+                            }
+                        }
+                        div { class: "dest-stats",
+                            "{total_embarked:.0} enslaved persons embarked · {voyages} voyages"
+                            if let (Some(y1), Some(y2)) = (min_year, max_year) {
+                                if y1 == y2 { " · {y1}" } else { " · {y1} \u{2013} {y2}" }
+                            }
+                        }
+                        div { class: "dataset-section-header ta-header", "Taken to ({dest_kind})" }
+                        FlowTable { flows: fl, section_total: total_embarked, by_destination: true }
+                        div { class: "methodology-footnote",
+                            "Port of embarkation is the imputed principal port of purchase (MJBYPTIMP). Voyages with no recorded destination are not listed."
+                        }
+                    }
+                }
+            } else if let Some(dest_code) = (state.selected_dest)() {
                 {
                     let dest_info = state.destinations
                         .read()
@@ -103,7 +137,7 @@ pub fn InfoPanel() -> Element {
                 }
             } else {
                 div { class: "no-selection",
-                    "Click a destination on the map or search above to view trade flow origins"
+                    "Click a destination to see where its captives came from, or an African port to see where they were taken. You can also search above."
                 }
             }
         }

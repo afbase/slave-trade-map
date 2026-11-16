@@ -1,6 +1,6 @@
 # Stem Test Algorithms
 
-This document explains the geometric algorithms used in `stem-intersection-test.html` to verify that trade-route stems render correctly — no physical crossings and smooth parallel flow.
+This document explains the geometric checks used to verify that trade-route stems render correctly — no physical crossings and smooth parallel flow. The orientation and segment-intersection tests (sections 1–2) are what `westward-routes.test.mjs` uses today. The later sections describe the browser test page for the earlier spine-and-ribbon stems (`stem-intersection-test.html`), which was removed along with that code.
 
 ---
 

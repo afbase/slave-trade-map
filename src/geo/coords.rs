@@ -48,6 +48,13 @@ pub fn build_region_coords() -> HashMap<i64, Coord> {
 
     // Senegambia
     m.insert(60100, coord!("Senegambia", 14.5, -16.5));
+    m.insert(60101, coord!("Albreda", 13.33, -16.38));
+    m.insert(60102, coord!("Arguim", 20.60, -16.45));
+    m.insert(60103, coord!("Bissagos", 11.30, -16.00));
+    m.insert(60107, coord!("Galam", 14.90, -12.45));
+    m.insert(60111, coord!("Joal, or Saloum River", 14.17, -16.85));
+    m.insert(60113, coord!("Portudal", 14.45, -17.02));
+    m.insert(60117, coord!("Rio Grande", 11.60, -15.50));
     m.insert(60104, coord!("Bissau", 11.86, -15.60));
     m.insert(60105, coord!("Cacheu", 12.27, -16.17));
     m.insert(60106, coord!("Casamance", 12.59, -16.27));
@@ -62,6 +69,11 @@ pub fn build_region_coords() -> HashMap<i64, Coord> {
 
     // Sierra Leone
     m.insert(60200, coord!("Sierra Leone", 8.5, -13.0));
+    m.insert(60204, coord!("Cacandia", 10.95, -14.30));
+    m.insert(60211, coord!("Iles Plantain", 7.90, -13.00));
+    m.insert(60214, coord!("Scarcies", 8.85, -13.15));
+    m.insert(60241, coord!("Mano", 6.92, -11.50));
+    m.insert(60242, coord!("Kissey River", 8.48, -13.20));
     m.insert(60201, coord!("Banana Islands", 7.58, -12.87));
     m.insert(60202, coord!("Bance Island", 8.63, -13.02));
     m.insert(60207, coord!("Freetown", 8.49, -13.23));
@@ -73,7 +85,19 @@ pub fn build_region_coords() -> HashMap<i64, Coord> {
     m.insert(60220, coord!("Sierra Leone estuary", 8.50, -13.10));
 
     // Windward Coast
-    m.insert(60300, coord!("Windward Coast", 6.0, -8.0));
+    m.insert(60300, coord!("Windward Coast", 5.0, -9.0));
+    m.insert(60310, coord!("Cess", 5.45, -9.58));
+    m.insert(60314, coord!("Drouin", 4.90, -6.15));
+    m.insert(60316, coord!("Little Bassa", 6.10, -10.20));
+    m.insert(60318, coord!("Grand Junk", 6.10, -10.40));
+    m.insert(60319, coord!("Little Junk", 6.15, -10.45));
+    m.insert(60322, coord!("Petit Mesurado", 6.30, -10.78));
+    m.insert(60324, coord!("Rio Assini", 5.12, -3.28));
+    m.insert(60330, coord!("Rock Sestos", 5.47, -9.60));
+    m.insert(60331, coord!("St. Paul", 6.38, -10.80));
+    m.insert(60332, coord!("Tabou", 4.42, -7.35));
+    m.insert(60333, coord!("Trade Town", 5.75, -9.90));
+    m.insert(60340, coord!("Garroway Roads", 4.57, -7.75));
     m.insert(60302, coord!("Bassa", 5.90, -10.05));
     m.insert(60305, coord!("Cap des Palmes", 4.38, -7.71));
     m.insert(60306, coord!("Cape Mount", 6.76, -11.33));
@@ -88,7 +112,10 @@ pub fn build_region_coords() -> HashMap<i64, Coord> {
     m.insert(60339, coord!("Cape Palmas", 4.38, -7.71));
 
     // Gold Coast
-    m.insert(60400, coord!("Gold Coast", 6.0, -1.0));
+    m.insert(60400, coord!("Gold Coast", 5.2, -1.0));
+    m.insert(60405, coord!("Alampo", 5.75, 0.45));
+    m.insert(60413, coord!("Chama", 5.02, -1.63));
+    m.insert(60425, coord!("Wiamba", 5.35, -0.62));
     m.insert(60402, coord!("Danish Gold Coast", 5.77, -0.18));
     m.insert(60404, coord!("Accra", 5.55, -0.20));
     m.insert(60407, coord!("Anomabu", 5.18, -1.12));
@@ -108,6 +135,11 @@ pub fn build_region_coords() -> HashMap<i64, Coord> {
 
     // Bight of Benin
     m.insert(60500, coord!("Bight of Benin", 6.5, 2.5));
+    m.insert(60503, coord!("Aghway", 6.25, 1.68));
+    m.insert(60519, coord!("Lay", 5.75, 0.20));
+    m.insert(60521, coord!("Oere", 5.52, 5.75));
+    m.insert(60524, coord!("Rio Forcados", 5.35, 5.35));
+    m.insert(60526, coord!("Rio Nun", 4.30, 6.10));
     m.insert(60501, coord!("Benin", 6.34, 5.63));
     m.insert(60502, coord!("Costa da Mina", 6.30, 2.50));
     m.insert(60506, coord!("Ardra", 6.40, 2.15));
@@ -124,6 +156,7 @@ pub fn build_region_coords() -> HashMap<i64, Coord> {
 
     // Bight of Biafra
     m.insert(60600, coord!("Bight of Biafra", 4.0, 8.5));
+    m.insert(60615, coord!("Corisco", 0.92, 9.33));
     m.insert(60601, coord!("Andony", 4.35, 7.47));
     m.insert(60604, coord!("Bimbia", 4.01, 9.31));
     m.insert(60605, coord!("Bonny", 4.45, 7.17));
@@ -142,6 +175,12 @@ pub fn build_region_coords() -> HashMap<i64, Coord> {
 
     // West Central Africa
     m.insert(60700, coord!("West Central Africa", -6.5, 13.0));
+    m.insert(60712, coord!("Cabo Lopo Goncalves", -0.63, 8.70));
+    m.insert(60715, coord!("Coanza River", -9.35, 13.15));
+    m.insert(60718, coord!("Rio Zaire", -6.05, 12.40));
+    m.insert(60722, coord!("Kilongo", -4.30, 11.60));
+    m.insert(60729, coord!("Mpinda", -6.12, 12.37));
+    m.insert(60732, coord!("Quicombo", -11.33, 13.82));
     m.insert(60703, coord!("Ambriz", -7.86, 13.13));
     m.insert(60707, coord!("Benguela", -12.58, 13.41));
     m.insert(60709, coord!("Boary", -5.00, 12.00));
@@ -159,6 +198,8 @@ pub fn build_region_coords() -> HashMap<i64, Coord> {
 
     // Southeast Africa
     m.insert(60800, coord!("Southeast Africa", -18.0, 38.0));
+    m.insert(60808, coord!("Quirimba", -12.40, 40.60));
+    m.insert(60819, coord!("Momboza or Zanzibar", -5.00, 39.50));
     m.insert(60802, coord!("Cabo Delgado", -10.69, 40.64));
     m.insert(60803, coord!("Cape of Good Hope", -33.93, 18.42));
     m.insert(60806, coord!("Ibo", -12.34, 40.59));
@@ -174,7 +215,7 @@ pub fn build_region_coords() -> HashMap<i64, Coord> {
     m.insert(60837, coord!("Mauritius", -20.35, 57.55));
 
     // Other Africa
-    m.insert(60900, coord!("Other Africa", 1.0, 20.0));
+    m.insert(60900, coord!("Other Africa", -2.5, 4.5));
     m.insert(60912, coord!("Windward+Ivory+Gold+Benin", 6.00, -2.00));
     m.insert(60914, coord!("Gold Coast+Benin+Biafra", 5.50, 3.00));
     m.insert(60915, coord!("Bights", 5.00, 5.50));

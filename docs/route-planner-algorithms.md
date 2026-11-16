@@ -6,6 +6,45 @@ This module routes flow-map stems from African source regions to transatlantic d
 
 ---
 
+> **Status (2026-11):** Africa → Americas stems no longer use the waypoint chains,
+> Fréchet separation or spine-and-ribbon offsets described in sections 3–6. Those
+> sections now apply only to inter-American and Europe-bound routes (chains and land
+> avoidance); the separation code (sections 5–6) has been removed. The current
+> transatlantic method is section 0. The Rust copy of the route builder is gone:
+> `assets/js/route-planner.js` is the only one.
+
+## 0. Westward Atlantic stems (`planAtlanticStems`)
+
+Goal: every stem runs from its African source to the Americas without ever turning
+back east, and stems into one destination never cross.
+
+1. **Gate.** Each source gets an offshore gate just off its own coast
+   (`africanGate`). Coasts that face west (Senegambia, Sierra Leone, Liberia, West
+   Central Africa) step about 3° west. Coasts that face south (Gulf of Guinea) drop
+   to a per-region lane latitude, stepping down from west to east (Gold Coast 3.9°,
+   Benin 3.4°, Biafra 2.9°), and follow the lane to 11.5°W, past Cape Palmas.
+   Southeast Africa instead follows `CAPE_ROUTE` round the Cape to St Helena.
+2. **Junction.** `planJunction` places J after the gates are known: 6° west of the
+   westernmost gate, at least 10° east of the destination, at 0.75 × the
+   destination's latitude (capped at 13°N and 26°S). North of the equator J is also
+   kept west of 25°W so it clears the West African bulge.
+3. **Stem.** One cubic Bezier per stem from gate to J (`_stemBezier`), in screen
+   space. The first control point continues west at the gate's latitude; the second
+   lies on the trunk's tangent, so stems merge into the trunk smoothly. Both control
+   points are clamped between J and the gate in x, which keeps the curve moving
+   west. Longer stems hold their latitude longer, so they pass outside shorter ones.
+4. **Fan-in.** Stems are ordered north to south along the coast (Southeast Africa
+   last) and arrive at J spread a few pixels apart across the trunk, in that order.
+5. **Land check.** Each stem is sampled against the land polygons. On a hit, its
+   first control point is pushed south and the run-in shortened; if stems still
+   touch land, J moves 4° west and everything is replanned.
+6. **Trunk.** A quadratic arc from J to the destination.
+
+`planAtlanticStems` returns `null` when the destination is not west of the sources
+(Europe, Africa, Atlantic islands); callers then fall back to waypoint chains.
+`tests/westward-routes.test.mjs` asserts the three properties (no eastward step, no
+land, no crossings) for every destination.
+
 ## 1. Coordinate Spaces
 
 Two coordinate spaces are in play throughout:

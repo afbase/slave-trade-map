@@ -7,3 +7,5 @@
 **/*.rs.bk
 umap-analysis/.venv
 umap-analysis/**/__pycache__
+# Node test dependencies
+tests/node_modules

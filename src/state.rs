@@ -5,7 +5,7 @@
 
 use crate::db::Database;
 use crate::js_bridge;
-use crate::models::{DatasetMode, DestinationInfo, FlowData, VoyageRecord};
+use crate::models::{DatasetMode, DestinationInfo, FlowData, OriginInfo, VoyageRecord};
 use crate::utils::dataset_mode_from_str;
 use dioxus::prelude::*;
 use std::collections::HashSet;
@@ -31,6 +31,15 @@ pub struct AppState {
     pub open_origins: Signal<HashSet<i64>>,
     pub expanded_voyages: Signal<HashSet<i64>>,
     pub show_about: Signal<bool>,
+    /// African embarkation places for the current time range (transatlantic).
+    pub origins: Signal<Vec<OriginInfo>>,
+    /// Selected African place; mutually exclusive with `selected_dest`.
+    pub selected_origin: Signal<Option<i64>>,
+    pub show_origins: Signal<bool>,
+    /// "auto" (by zoom), "regions" or "ports".
+    pub origin_level: Signal<String>,
+    pub show_unspecified: Signal<bool>,
+    pub show_african_landings: Signal<bool>,
 }
 
 impl AppState {
@@ -55,11 +64,73 @@ impl AppState {
             open_origins: Signal::new(HashSet::new()),
             expanded_voyages: Signal::new(HashSet::new()),
             show_about: Signal::new(false),
+            origins: Signal::new(Vec::new()),
+            selected_origin: Signal::new(None),
+            show_origins: Signal::new(true),
+            origin_level: Signal::new("auto".to_string()),
+            show_unspecified: Signal::new(true),
+            show_african_landings: Signal::new(false),
+        }
+    }
+
+    /// Query African embarkation places for the time range and draw them.
+    /// The Inter-American dataset has no African origins, so the layer is emptied.
+    pub fn refresh_origins(&mut self, ds: DatasetMode, min: i64, max: i64) {
+        let origins = match (ds, self.db.read().as_ref()) {
+            (DatasetMode::InterAmerican, _) | (_, None) => Vec::new(),
+            (_, Some(db)) => db.get_origin_ports(min, max).unwrap_or_default(),
+        };
+        js_bridge::render_origins(&origins);
+        self.origins.set(origins);
+    }
+
+    /// Push the African-layer toggles to the map.
+    pub fn apply_origin_options(&self) {
+        js_bridge::set_origin_options(
+            *self.show_origins.peek(),
+            &self.origin_level.peek(),
+            *self.show_unspecified.peek(),
+        );
+    }
+
+    /// Select an African place: show where its captives were taken.
+    pub fn select_origin(&mut self, code: i64) {
+        self.selected_origin.set(Some(code));
+        self.selected_dest.set(None);
+        self.voyage_data.set(vec![]);
+        self.open_origins.set(HashSet::new());
+        self.expanded_voyages.set(HashSet::new());
+        js_bridge::clear_timeline();
+        self.render_selected_origin(code);
+    }
+
+    /// Query and draw the flows leaving `code` for the current mode and time range.
+    /// Clears the selection if the place has no flows in that range.
+    fn render_selected_origin(&mut self, code: i64) {
+        let by_region = *self.mode.peek() == "regions";
+        let min = *self.current_min.peek();
+        let max = *self.current_max.peek();
+        let result = match self.db.read().as_ref() {
+            Some(db) => db.get_flows_from_origin(code, min, max, by_region),
+            None => return,
+        };
+        match result {
+            Ok(flow_data) if !flow_data.is_empty() => {
+                js_bridge::render_origin_flows(&flow_data, code);
+                self.flows.set(flow_data);
+            }
+            Ok(_) => {
+                js_bridge::clear_flows();
+                self.selected_origin.set(None);
+                self.flows.set(vec![]);
+            }
+            Err(e) => self.error_msg.set(Some(format!("Query failed: {}", e))),
         }
     }
 
     /// Select a destination by code: query flows + voyages, render on map.
     pub fn select_destination(&mut self, code: i64) {
+        self.selected_origin.set(None);
         self.selected_dest.set(Some(code));
         self.open_origins.set(HashSet::new());
         self.expanded_voyages.set(HashSet::new());
@@ -124,6 +195,7 @@ impl AppState {
                 js_bridge::render_destinations(&dests, mode_str);
             }
         }
+        self.refresh_origins(ds, min, max);
     }
 
     /// Switch dataset mode (transatlantic/interamerican/combined), reset selection, refresh map.
@@ -133,6 +205,7 @@ impl AppState {
         }
         self.dataset_mode.set(ds_str.to_string());
         self.selected_dest.set(None);
+        self.selected_origin.set(None);
         self.flows.set(vec![]);
         self.voyage_data.set(vec![]);
         self.search_query.set(String::new());
@@ -166,10 +239,28 @@ impl AppState {
         let min = (self.current_min)();
         let max = (self.current_max)();
         self.refresh_destinations(new_mode, ds, min, max);
+
+        // A selected African place stays selected; redraw its flows at the
+        // new destination granularity (regions vs ports).
+        let origin = *self.selected_origin.peek();
+        if let Some(code) = origin {
+            self.render_selected_origin(code);
+        }
     }
 
-    /// Handle time range change: refresh destinations, re-query flows if a dest is selected.
+    /// Handle time range change: refresh destinations and origins, re-query
+    /// flows for whichever destination or African place is selected.
     pub fn refresh_after_time_change(&mut self, year_min: i64, year_max: i64) {
+        self.refresh_destination_side(year_min, year_max);
+        let ds = dataset_mode_from_str(&self.dataset_mode.peek());
+        self.refresh_origins(ds, year_min, year_max);
+        let origin = *self.selected_origin.peek();
+        if let Some(code) = origin {
+            self.render_selected_origin(code);
+        }
+    }
+
+    fn refresh_destination_side(&mut self, year_min: i64, year_max: i64) {
         if let Some(db) = self.db.read().as_ref() {
             let mode_str = self.mode.peek().clone();
             let ds = dataset_mode_from_str(&self.dataset_mode.peek());

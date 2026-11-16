@@ -1,6 +1,7 @@
 //! Destination search input with fuzzy-match and browse dropdown.
 
 use crate::components::FuzzySearchInput;
+use crate::js_bridge;
 use crate::state::AppState;
 use crate::utils::fuzzy_score;
 use dioxus::prelude::*;
@@ -21,7 +22,7 @@ pub fn DestinationSearch() -> Element {
                 },
                 FuzzySearchInput {
                     value: (state.search_query)(),
-                    placeholder: if (state.mode)() == "regions" { "Search destination region...".to_string() } else { "Search destination port...".to_string() },
+                    placeholder: if (state.mode)() == "regions" { "Search destination region or African port...".to_string() } else { "Search destination or African port...".to_string() },
                     on_change: move |val: String| {
                         state.search_query.set(val);
                         state.browse_open.set(false);
@@ -49,23 +50,33 @@ pub fn DestinationSearch() -> Element {
                 let q = state.search_query.read().clone();
 
                 // Build the dropdown items
-                let dropdown_items = if browse && q.is_empty() {
-                    // Browse mode: all destinations sorted by volume
+                // (code, name, embarked, is_african_origin)
+                let dropdown_items: Vec<(i64, String, f64, bool)> = if browse && q.is_empty() {
                     let mut all: Vec<_> = state.destinations.read().clone();
                     all.sort_by(|a, b| b.total_embarked.partial_cmp(&a.total_embarked).unwrap_or(std::cmp::Ordering::Equal));
                     all.truncate(50);
-                    all
+                    all.into_iter().map(|d| (d.code, d.name, d.total_embarked, false)).collect()
                 } else if search && !q.is_empty() {
-                    // Search mode: fuzzy-matched results
-                    let mut scored: Vec<_> = state.destinations
+                    // Destinations and African embarkation places in one ranked list.
+                    let mut scored: Vec<((i64, String, f64, bool), i32)> = state.destinations
                         .read()
                         .iter()
                         .filter_map(|d| {
-                            fuzzy_score(&q, &d.name).map(|s| (d.clone(), s))
+                            fuzzy_score(&q, &d.name)
+                                .map(|s| ((d.code, d.name.clone(), d.total_embarked, false), s))
                         })
                         .collect();
-                    scored.sort_by_key(|b| std::cmp::Reverse(b.1));
-                    scored.into_iter().take(8).map(|(d, _)| d).collect::<Vec<_>>()
+                    scored.extend(state.origins.read().iter().filter_map(|o| {
+                        fuzzy_score(&q, &o.name)
+                            .map(|s| ((o.code, o.name.clone(), o.total_embarked, true), s))
+                    }));
+                    // Best match first; larger places win ties.
+                    scored.sort_by(|a, b| {
+                        b.1.cmp(&a.1).then(
+                            b.0.2.partial_cmp(&a.0.2).unwrap_or(std::cmp::Ordering::Equal),
+                        )
+                    });
+                    scored.into_iter().take(10).map(|(d, _)| d).collect()
                 } else {
                     vec![]
                 };
@@ -73,21 +84,35 @@ pub fn DestinationSearch() -> Element {
                 if !dropdown_items.is_empty() {
                     rsx! {
                         div { class: "search-dropdown",
-                            for dest in dropdown_items.iter() {
+                            for item in dropdown_items.iter() {
                                 {
-                                    let code = dest.code;
-                                    let name = dest.name.clone();
-                                    let embarked = dest.total_embarked;
+                                    let code = item.0;
+                                    let name = item.1.clone();
+                                    let embarked = item.2;
+                                    let is_origin = item.3;
                                     rsx! {
                                         div {
-                                            class: "search-result",
+                                            class: if is_origin { "search-result search-result-origin" } else { "search-result" },
                                             onmousedown: move |_| {
                                                 state.search_query.set(String::new());
                                                 state.search_open.set(false);
                                                 state.browse_open.set(false);
-                                                state.select_destination(code);
+                                                if is_origin {
+                                                    // Make sure the layer is visible, then zoom and select.
+                                                    if !*state.show_origins.peek() {
+                                                        state.show_origins.set(true);
+                                                        state.apply_origin_options();
+                                                    }
+                                                    js_bridge::focus_origin(code);
+                                                    state.select_origin(code);
+                                                } else {
+                                                    state.select_destination(code);
+                                                }
                                             },
                                             "{name}"
+                                            if is_origin {
+                                                span { class: "search-result-tag", "African port" }
+                                            }
                                             span { class: "search-result-stat",
                                                 " ({embarked:.0} enslaved)"
                                             }

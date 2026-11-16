@@ -9,7 +9,6 @@ mod geo;
 mod geometry;
 mod js_bridge;
 mod models;
-mod routing;
 mod state;
 mod utils;
 mod wasm_exports;
@@ -59,6 +58,9 @@ fn App() -> Element {
                 {
                     state.destinations.set(dests);
                 }
+                if let Ok(origins) = db.get_origin_ports(min, max) {
+                    state.origins.set(origins);
+                }
             }
             state.db.set(Some(db));
             state.loading.set(false);
@@ -71,17 +73,29 @@ fn App() -> Element {
         }
     });
 
-    // Initialize D3 map after DB is loaded
+    // Initialize the D3 map once, after the DB is loaded. Destinations are
+    // peeked, not read: subscribing to them would rebuild the whole map (and
+    // drop the zoom and any drawn flows) on every time-slider or mode change.
+    let mut map_started = use_signal(|| false);
     use_effect(move || {
-        if (state.loading)() || state.destinations.read().is_empty() {
+        if (state.loading)() || *map_started.peek() || state.destinations.peek().is_empty() {
             return;
         }
+        map_started.set(true);
 
         js_bridge::load_map_scripts();
 
-        let dest_json = serde_json::to_string(&*state.destinations.read()).unwrap_or_default();
-        js_bridge::init_map_with_destinations(&dest_json, "regions");
+        let dest_json = serde_json::to_string(&*state.destinations.peek()).unwrap_or_default();
+        let origins_json = serde_json::to_string(&*state.origins.peek()).unwrap_or_default();
+        js_bridge::init_map_with_destinations(&dest_json, &origins_json, "regions");
     });
+
+    let on_origin_click = move |evt: Event<FormData>| {
+        let val = evt.value();
+        if let Ok(code) = val.parse::<i64>() {
+            state.select_origin(code);
+        }
+    };
 
     let on_dest_click = move |evt: Event<FormData>| {
         let val = evt.value();
@@ -114,6 +128,12 @@ fn App() -> Element {
                 r#type: "hidden",
                 value: "",
                 oninput: on_dest_click,
+            }
+            input {
+                id: "origin-click-receiver",
+                r#type: "hidden",
+                value: "",
+                oninput: on_origin_click,
             }
 
             HeaderBar {}
