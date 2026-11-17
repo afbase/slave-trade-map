@@ -12,7 +12,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/afbase/rust-zola-builder:pinned
+      image: ghcr.io/afbase/rust-zola-builder:pinned-b3bcc199853a1d9dfb763725594997e1c21d8d38
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
