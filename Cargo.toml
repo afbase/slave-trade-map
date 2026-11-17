@@ -29,7 +29,7 @@ opt-level = 3
 overflow-checks = false
 incremental = true
 panic = "unwind"
-strip = "symbols"
+# strip = "symbols"
 
 [target.wasm32-unknown-unknown]
 rustflags = ["-C", "target-feature=+simd128"]
