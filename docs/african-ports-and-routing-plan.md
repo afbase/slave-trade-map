@@ -199,3 +199,14 @@ function stemPath(code, J, trunkDir, rank, n) {
   - Luanda, Bonny and Whydah selected through search.
 - Check totals: the sum of African port markers plus the xx99 rings equals the region totals for the same year range.
 - When done, reply to Daniel with what changed and why: the map grouped departures into 9 regions and only drew markers for landing places; it now shows `MJBYPTIMP` ports.
+
+---
+
+## Addendum (2026-11-16): Peru and Europe
+
+The westward planner drew one arc from the junction to the destination, which cut across South America for Peru, and it declined Europe altogether, leaving the old waypoint chains (which crossed Iberia and each other). Both are now special cases in `assets/js/route-planner.js`, reached through `planFlowStems()`:
+
+- **Pacific coast (43xxx-46xxx: Peru, Chile, Ecuador, Pacific Central America).** Stems still only move west, into a junction in the South Atlantic (30 S). The trunk follows `CAPE_HORN_ROUTE` south of Tierra del Fuego and then `PACIFIC_COAST_ROUTE` north to the destination. Southeast Africa skips the St Helena leg and heads for the Horn from the Cape.
+- **Europe (1xxxx).** `planNorthboundStems()`: each stem leaves through its usual gate, joins `NORTH_CORRIDOR` round the West African bulge, and meets the others off the Saharan coast (23 N). The trunk follows `EUROPE_LANES`, a small tree of sea lanes (Iberia, Biscay, Channel, North Sea, Gibraltar); the lane into each destination is the one whose last leg crosses the least land.
+- **Known limits.** Country anchors that sit inland (Spain, France, Scotland..) still get a last stretch over land from the nearest lane; ports do not. Baltic destinations lie past the last lane. Madeira and the Canaries as *sources* to Europe fall back to a plain arc. None of the last two occur in the voyage data.
+- **Test:** `tests/special-routes.test.mjs` samples the drawn curves (not only their control points) for land, direction and crossings.

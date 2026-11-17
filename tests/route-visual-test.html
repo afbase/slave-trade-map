@@ -96,9 +96,9 @@
     // Convergence point (simplified)
     var convergePt = [destPt[0] - 60, destPt[1]];
 
-    // Africa -> Americas routes come from planAtlanticStems (the app's planner).
+    // Routes out of Africa come from planFlowStems (the app's planner).
     window._projection = _projection = projection;
-    var plan = planAtlanticStems(SOURCES, destCode, 0, null);
+    var plan = planFlowStems(SOURCES, destCode, 0, null);
     if (plan) {
       SOURCES.forEach(function(src, idx) {
         if (!plan.stems[src]) return;

@@ -25,10 +25,11 @@ function renderFlowGroup(flows, destPt, dataset, zOffset, destCode) {
   var trunkBias = (destQuadrant === "rio-plata" || destQuadrant === "pacific-south")
     ? "south-atlantic" : null;
 
-  // Africa -> Americas: every stem runs west from its own coast into one junction.
+  // Out of Africa: every stem runs from its own coast into one junction (west
+  // for the Americas, round Cape Horn for the Pacific, north for Europe).
   var plan = null;
-  if (dataset !== "interamerican" && typeof planAtlanticStems === 'function') {
-    plan = planAtlanticStems(
+  if (dataset !== "interamerican" && typeof planFlowStems === 'function') {
+    plan = planFlowStems(
       flows.map(function(f) { return f.source_code; }), destCode, zOffset * 15, trunkBias);
   }
   // Landings on the African coast: short coastwise arcs, no shared trunk.
@@ -289,11 +290,11 @@ function renderOriginFlows(flowsJson, originCode) {
     if (!destPt) return;
 
     var d = null;
-    var plan = typeof planAtlanticStems === 'function'
-      ? planAtlanticStems([originCode], flow.target_code, 0, null) : null;
+    var plan = typeof planFlowStems === 'function'
+      ? planFlowStems([originCode], flow.target_code, 0, null) : null;
     if (plan) {
       // The trunk starts where the stem ends: append its curve to the stem.
-      d = plan.stems[originCode] + plan.trunk.replace(/^M [^Q]+/, " ");
+      d = plan.stems[originCode] + plan.trunkTail;
     } else {
       d = generateArc(srcPt, destPt);
     }
